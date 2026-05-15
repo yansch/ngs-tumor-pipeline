@@ -90,6 +90,6 @@ done < <(find "$INPUT_DIR" -maxdepth 1 -name "*_R1_*.fastq.gz" | sort)
 
 # --- 4. Summary ---
 echo "-------------------------------------------------------"
-echo "🏁 Finished. Total cases: $submitted"
+echo "✅ Finished. Total cases: $submitted"
 [ "$DRY_RUN" = true ] && echo "   Note: Dry-run complete. No jobs were executed."
 echo "-------------------------------------------------------"

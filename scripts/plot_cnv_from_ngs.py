@@ -86,10 +86,10 @@ def calculate_chromosome_features(cytoband_df):
         .agg(length=('end', 'max'))
         .reset_index()
     )
-    chromosomes_df['sort_key'] = chromosomes_df['chromosome'].apply(natural_sort_key_chromosome)
+    chromosomes_df.loc[:, 'sort_key'] = chromosomes_df['chromosome'].apply(natural_sort_key_chromosome)
     chromosomes_df = chromosomes_df.sort_values('sort_key').drop(columns=['sort_key']).reset_index(drop=True)
 
-    chromosomes_df['chromosome_absolute_start'] = chromosomes_df['length'].cumsum() - chromosomes_df['length']
+    chromosomes_df.loc[:, 'chromosome_absolute_start'] = chromosomes_df['length'].cumsum() - chromosomes_df['length']
     chromosome_start_map = chromosomes_df.set_index('chromosome')['chromosome_absolute_start'].to_dict()
 
     # Find the end of the p-arm (centromere start) for each chromosome.
@@ -172,7 +172,7 @@ def load_ngs_cnr_file(cnr_filepath, case_identifier):
 
     for col in ['start', 'end']:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype(pd.Int64Dtype())
+            df.loc[:, col] = pd.to_numeric(df[col], errors='coerce').astype(pd.Int64Dtype())
 
     df = df.dropna(subset=['chromosome', 'start', 'end', 'log2'])
     if df.empty:
@@ -265,7 +265,7 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
         return pd.DataFrame()
 
     for col in ['start', 'end']:
-        df[col] = pd.to_numeric(df[col], errors='coerce').astype(pd.Int64Dtype())
+        df.loc[:, col] = pd.to_numeric(df[col], errors='coerce').astype(pd.Int64Dtype())
     df.loc[:, 'log2'] = pd.to_numeric(df['log2'], errors='coerce')
 
     df = df.dropna(subset=['chromosome', 'start', 'end', 'log2'])
@@ -275,11 +275,11 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
 
     if pd.notna(cnr_original_mean) and pd.notna(cnr_original_std):
         # Restore biological log2 units by only centering
-        df['log2'] = (df['log2'] - cnr_original_mean)
+        df.loc[:, 'log2'] = (df['log2'] - cnr_original_mean)
     else:
         print(f"Warning: CNS log2 values for {cns_filepath.name} cannot be normalized... Setting CNS log2 to NaN.",
               file=sys.stderr)
-        df['log2'] = np.nan
+        df.loc[:, 'log2'] = np.nan
 
     df.loc[:, 'chromosome_absolute_start'] = df['chromosome'].map(chromosome_start_map)
 
@@ -302,7 +302,7 @@ def annotate_segments_with_genes(df, gene_interval_trees, genes_df, padding=GENE
     """Annotates DataFrame segments with overlapping genes."""
     if df.empty:
         if 'gene' not in df.columns:
-            df['gene'] = pd.NA
+            df.loc[:, 'gene'] = pd.NA
         return df
 
     all_relevant_genes = set(genes_df['gene'])
