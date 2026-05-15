@@ -21,6 +21,7 @@ START_TIME=$(date +%s)
 
 # Stop script execution on error
 set -eo pipefail
+trap 'echo "❌ Pipeline failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 # Input Validation
 if [ "$#" -lt 2 ]; then
@@ -158,6 +159,10 @@ source "$PROJECT_DIR/config/common.sh" # Re-source to restore variables
 load_modules "$TOOLCHAIN_PYTHON" "$PYTHON_MODULE" "$R_PYTHON_COMPAT_MODULE"
 load_ngs_python_env
 
+# Prevent Arriba's Python stdlib from leaking into the venv (PATH contamination)
+unset PYTHONPATH
+export MPLBACKEND=Agg  # Use headless matplotlib backend (no display required)
+
 echo "Starting analysis for $CASE_LABEL..."
 
 ### CNV calling with CNVkit ################################################################
@@ -214,7 +219,7 @@ fi
 # Purity Plots
 if [ ! -f "$OUT_DIR/cnv/cnv_plot_purity_0.1.png" ]; then
     for p_int in {10..1}; do
-        purity=$(awk -v p="$p_int" 'BEGIN {print p/10}')
+        purity=$(LC_NUMERIC=C awk -v p="$p_int" 'BEGIN {print p/10}')
         fname=$( [ "$p_int" -eq 10 ] && echo "cnv_plot.png" || echo "cnv_plot_purity_${purity}.png" )
         echo "Generating CNV plot for purity ${purity}..."
         python "$PROJECT_DIR/scripts/plot_cnv_from_ngs.py" "$CNR_FILE" --case-id "${R1_base}" -o "$OUT_DIR/cnv" -f "$fname" --purity "$purity" -c "$CYTOBAND_TXT" -g "$RELEVANT_GENES" || :

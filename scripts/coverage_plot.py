@@ -114,7 +114,7 @@ def main():
         sys.exit(1)
         
     # Set default values if Gene is missing
-    cov_df['Gene'] = cov_df['Gene'].fillna("Unknown")
+    cov_df.loc[:, 'Gene'] = cov_df['Gene'].fillna("Unknown")
     
     # Sort for plotting: Group by Gene, then by Target Name
     cov_df = cov_df.sort_values(by=['Gene', 'Target'])

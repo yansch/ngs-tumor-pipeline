@@ -13,7 +13,7 @@ from intervaltree import IntervalTree
 from matplotlib import pyplot as plt
 from scipy.stats import zscore
 
-DEFAULT_PLOT_Y_LIM = 3.5
+DEFAULT_PLOT_Y_LIM = 7.5
 GENE_ANNOTATION_PADDING = 0
 GENE_MERGE_DISTANCE = 2_000_000
 
@@ -61,7 +61,7 @@ def load_and_preprocess_cytoband(file_path):
     """Loads cytoband data and ensures chromosome column is string."""
     try:
         df = pd.read_csv(file_path, delimiter='\t', names=CYTOBAND_COLUMN_NAMES)
-        df['chromosome'] = df['chromosome'].astype(str)  # Ensure string type
+        df.loc[:, 'chromosome'] = df['chromosome'].astype(str)  # Ensure string type
     except FileNotFoundError:
         print(f"Error: Cytoband file not found at {file_path}", file=sys.stderr)
         sys.exit(1)
@@ -78,7 +78,7 @@ def calculate_chromosome_features(cytoband_df):
         return pd.DataFrame(columns=['chromosome', 'length', 'chromosome_absolute_start']), {}, []
 
     # Ensure chromosome column is string before grouping
-    cytoband_df['chromosome'] = cytoband_df['chromosome'].astype(str)
+    cytoband_df.loc[:, 'chromosome'] = cytoband_df['chromosome'].astype(str)
 
     chromosomes_df = (
         cytoband_df
@@ -111,7 +111,7 @@ def load_and_preprocess_relevant_genes(file_path):
     """Loads relevant genes data and ensures chromosome column is string."""
     try:
         df = pd.read_csv(file_path, delimiter=';', names=RELEVANT_GENES_COLUMN_NAMES)
-        df['chromosome'] = df['chromosome'].astype(str)  # Ensure string type
+        df.loc[:, 'chromosome'] = df['chromosome'].astype(str)  # Ensure string type
     except FileNotFoundError:
         print(f"Warning: Relevant genes file not found at {file_path}. Gene annotation will be skipped.",
               file=sys.stderr)
@@ -128,7 +128,7 @@ def build_gene_interval_trees(relevant_genes_df):
         return {}
     trees = {}
     # Ensure chromosome is string type for grouping
-    relevant_genes_df['chromosome'] = relevant_genes_df['chromosome'].astype(str)
+    relevant_genes_df.loc[:, 'chromosome'] = relevant_genes_df['chromosome'].astype(str)
     relevant_genes_df = relevant_genes_df.dropna(subset=['chromosome'])
 
     for chrom, group in relevant_genes_df.groupby('chromosome'):
@@ -155,7 +155,7 @@ def load_ngs_cnr_file(cnr_filepath, case_identifier):
         df = pd.read_csv(cnr_filepath, sep='\t')
         # Ensure chromosome column is string type right after loading
         if 'chromosome' in df.columns:
-            df['chromosome'] = df['chromosome'].astype(str)
+            df.loc[:, 'chromosome'] = df['chromosome'].astype(str)
         else:
             print(f"Error: 'chromosome' column not found in {cnr_filepath.name}", file=sys.stderr)
             return None, np.nan, np.nan
@@ -164,7 +164,7 @@ def load_ngs_cnr_file(cnr_filepath, case_identifier):
         print(f"Error reading .cnr file {cnr_filepath}: {e}", file=sys.stderr)
         return None, np.nan, np.nan
 
-    df['case_identifier'] = case_identifier
+    df.loc[:, 'case_identifier'] = case_identifier
 
     if df.empty:
         print(f"Warning: No data in {cnr_filepath.name} after initial load.", file=sys.stderr)
@@ -245,7 +245,7 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
         df = pd.read_csv(cns_filepath, sep='\t')
         # Ensure chromosome column is string type right after loading
         if 'chromosome' in df.columns:
-            df['chromosome'] = df['chromosome'].astype(str)
+            df.loc[:, 'chromosome'] = df['chromosome'].astype(str)
         else:
             print(f"Error: 'chromosome' column not found in {cns_filepath.name}", file=sys.stderr)
             return pd.DataFrame()
@@ -266,7 +266,7 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
 
     for col in ['start', 'end']:
         df[col] = pd.to_numeric(df[col], errors='coerce').astype(pd.Int64Dtype())
-    df['log2'] = pd.to_numeric(df['log2'], errors='coerce')
+    df.loc[:, 'log2'] = pd.to_numeric(df['log2'], errors='coerce')
 
     df = df.dropna(subset=['chromosome', 'start', 'end', 'log2'])
     if df.empty:
@@ -281,7 +281,7 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
               file=sys.stderr)
         df['log2'] = np.nan
 
-    df['chromosome_absolute_start'] = df['chromosome'].map(chromosome_start_map)
+    df.loc[:, 'chromosome_absolute_start'] = df['chromosome'].map(chromosome_start_map)
 
     if df['chromosome_absolute_start'].isna().any():
         print(f"Warning: Some segments in {cns_filepath.name} are on chromosomes not found in cytoband data...dropped.",
@@ -292,8 +292,8 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
         print(f"Warning: No segments remaining in {cns_filepath.name} after mapping or invalid log2.", file=sys.stderr)
         return pd.DataFrame()
 
-    df['cns_segment_absolute_start'] = df['chromosome_absolute_start'] + df['start']
-    df['cns_segment_absolute_end'] = df['chromosome_absolute_start'] + df['end']
+    df.loc[:, 'cns_segment_absolute_start'] = df['chromosome_absolute_start'] + df['start']
+    df.loc[:, 'cns_segment_absolute_end'] = df['chromosome_absolute_start'] + df['end']
 
     return df
 
@@ -306,7 +306,7 @@ def annotate_segments_with_genes(df, gene_interval_trees, genes_df, padding=GENE
         return df
 
     all_relevant_genes = set(genes_df['gene'])
-    df['chromosome'] = df['chromosome'].astype(str)
+    df.loc[:, 'chromosome'] = df['chromosome'].astype(str)
 
     # Identify valid "panel genes" already in the dataframe. These will be excluded from the search.
     is_not_na = df['gene'].notna()
@@ -345,14 +345,14 @@ def prep_ngs_for_plotting(df, chrom_start_map):
         return df.assign(absolute_start=np.nan, length=np.nan)  # ensure columns exist
 
     # Ensure chromosome column is string for mapping
-    df['chromosome'] = df['chromosome'].astype(str)
+    df.loc[:, 'chromosome'] = df['chromosome'].astype(str)
 
     valid_chroms = df['chromosome'].isin(chrom_start_map.keys())
     if not valid_chroms.all():
         print(f"Warning: {sum(~valid_chroms)} bins have chromosomes not found in chromosome map...", file=sys.stderr)
 
-    df['absolute_start'] = df['chromosome'].map(chrom_start_map) + ((df['start'] + df['end']) // 2)
-    df['length'] = df['end'] - df['start']
+    df.loc[:, 'absolute_start'] = df['chromosome'].map(chrom_start_map) + ((df['start'] + df['end']) // 2)
+    df.loc[:, 'length'] = df['end'] - df['start']
     return df
 
 
@@ -382,7 +382,7 @@ def aggregate_data_by_gene(annotated_df, plot_y_lim, merge_distance=GENE_MERGE_D
     gene_reps = gene_reps.sort_values('absolute_position').reset_index(drop=True)
 
     if merge_distance <= 0:  # If no merging is desired, just clip and return
-        gene_reps['log2'] = gene_reps['log2'].clip(lower=-plot_y_lim, upper=plot_y_lim)
+        gene_reps.loc[:, 'log2'] = gene_reps['log2'].clip(lower=-plot_y_lim, upper=plot_y_lim)
         return gene_reps
 
     groups = []
@@ -425,7 +425,7 @@ def aggregate_data_by_gene(annotated_df, plot_y_lim, merge_distance=GENE_MERGE_D
         return pd.DataFrame()
 
     merged_gene_reps = pd.DataFrame(final_reps_data)
-    merged_gene_reps['log2'] = merged_gene_reps['log2'].clip(lower=-plot_y_lim, upper=plot_y_lim)
+    merged_gene_reps.loc[:, 'log2'] = merged_gene_reps['log2'].clip(lower=-plot_y_lim, upper=plot_y_lim)
 
     return merged_gene_reps
 
@@ -652,9 +652,9 @@ def main():
 
     if args.purity < 1.0:
         print(f"Applying tumor purity adjustment (Purity: {args.purity})...")
-        ngs_raw_df['log2'] = calculate_purified_log2(ngs_raw_df['log2'], args.purity)
+        ngs_raw_df.loc[:, 'log2'] = calculate_purified_log2(ngs_raw_df['log2'], args.purity)
         if not cns_segments_df.empty:
-            cns_segments_df['log2'] = calculate_purified_log2(cns_segments_df['log2'], args.purity)
+            cns_segments_df.loc[:, 'log2'] = calculate_purified_log2(cns_segments_df['log2'], args.purity)
 
     print("Preparing NGS data for plotting...")
     ngs_processed_df = prep_ngs_for_plotting(ngs_raw_df.copy(), chrom_map)

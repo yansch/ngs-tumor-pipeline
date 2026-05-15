@@ -1,51 +1,50 @@
 #!/bin/bash
-# config/common.sh - Host detection and shared logic for NGS Tumor Pipeline
+# config/common.sh - Host detection and shared logic
 
-# Detect host
+# 1. Path Management
+# Get the directory where THIS script lives (the config folder)
+CONF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The project root is one level up
+export PROJECT_DIR="$(dirname "$CONF_DIR")"
+
+# 2. Host Detection
 HOSTNAME_S=$(hostname -s)
 if [[ "$HOSTNAME_S" == palma* || "$HOSTNAME_S" == r* ]]; then
     export PIPELINE_HOST="palma"
 else
-    # Assuming Omen if not on Palma
     export PIPELINE_HOST="omen"
 fi
 
-# Base directory setup
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-
-# Source host-specific configuration
-if [ -f "$SCRIPT_DIR/${PIPELINE_HOST}.sh" ]; then
-    source "$SCRIPT_DIR/${PIPELINE_HOST}.sh"
+# 3. Source host-specific configuration
+# We use CONF_DIR here because omen.sh/palma.sh are in the same folder
+if [ -f "$CONF_DIR/${PIPELINE_HOST}.sh" ]; then
+    source "$CONF_DIR/${PIPELINE_HOST}.sh"
 else
-    echo "Error: Configuration for host $PIPELINE_HOST not found in $SCRIPT_DIR"
+    echo "❌ Error: Configuration for host $PIPELINE_HOST not found in $CONF_DIR"
     exit 1
 fi
 
 # --- Helper Functions ---
 
-# Module system wrappers — no-ops on hosts without modules
 load_modules() {
     if [ "$HAS_MODULE_SYSTEM" = true ]; then
         for mod in "$@"; do
             [ -z "$mod" ] && continue
-            module load $mod
+            module load "$mod"
         done
     fi
+    return 0
 }
 
 purge_modules() {
-    if [ "$HAS_MODULE_SYSTEM" = true ]; then
-        module purge
-    fi
+    [ "$HAS_MODULE_SYSTEM" = true ] && module purge || true
 }
 
-# Python venv activation
 load_ngs_python_env() {
     if [ -f "$VENV_PATH/bin/activate" ]; then
         source "$VENV_PATH/bin/activate"
     else
-        echo "Error: Virtual environment not found at $VENV_PATH. Run setup.sh first."
+        echo "❌ Error: Virtual environment not found at $VENV_PATH. Run setup.sh first."
         exit 1
     fi
 }
