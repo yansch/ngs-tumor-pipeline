@@ -63,8 +63,10 @@ mkdir -p "$TMP_DIR" "$CNV_DIR" "$OUT_DIR/arriba" "$OUT_DIR/fastp" "$LOG_DIR"
 echo "Starting ngs_tumor_pipeline for $CASE_LABEL on $(hostname)"
 echo "Using $THREADS threads"
 
+FASTP_JSON="$FASTP_DIR/${R1_base}.fastp.json"
+
 ### fastp Preprocessing #######################################################
-if [ ! -f "$R1_TRIMMED" ]; then
+if [[ ! -f "$R1_TRIMMED" || ! -f "$FASTP_JSON" ]]; then
     echo "Running fastp preprocessing..."
     fastp \
         -i "$R1_PATH" -I "$R2_PATH" \
@@ -72,11 +74,10 @@ if [ ! -f "$R1_TRIMMED" ]; then
         -p "$THREADS" \
         --low_complexity_filter \
         -h "$FASTP_DIR/${R1_base}.fastp.html" \
-        -j "$FASTP_DIR/${R1_base}.fastp.json"
+        -j "$FASTP_JSON"
 fi
 
 # Extract 'total_reads' from fastp.json
-FASTP_JSON="$FASTP_DIR/${R1_base}.fastp.json"
 if command -v jq &>/dev/null; then
     TOTAL_READS=$(jq -r '.summary.before_filtering.total_reads' "$FASTP_JSON")
 else
@@ -285,6 +286,6 @@ echo "Cleaning up temporary files in $TMP_DIR..."
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 echo "--------------------------------------------------------------------------------"
-echo "Pipeline finished for ${CASE_LABEL}"
-echo "Total elapsed time: $(printf '%02d:%02d:%02d' $((DURATION/3600)) $((DURATION%3600/60)) $((DURATION%60)))"
+echo "✅ Pipeline finished for ${CASE_LABEL}"
+echo "⏱️ Elapsed time: $(printf '%02d:%02d:%02d' $((DURATION/3600)) $((DURATION%3600/60)) $((DURATION%60)))"
 echo "--------------------------------------------------------------------------------"

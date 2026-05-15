@@ -47,7 +47,7 @@ export PIPELINE_PARTITION="normal"
 export SORT_MEM_BASE=20000
 
 # --- Runtime & Output Paths ---
-export SCRATCH_DIR="/scratch/tmp/$USER/ngs_tumor_pipeline"
+export SCRATCH_DIR="/scratch/tmp/$USER/ngs-tumor-pipeline"
 export INPUT_DIR="$SCRATCH_DIR/input/fastq"
 export VARIANTS_SEARCH_DIR="$SCRATCH_DIR/input/vcf"
 export RESULTS_BASE="${RESULTS_BASE:-$SCRATCH_DIR/output}"
