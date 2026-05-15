@@ -34,12 +34,13 @@ echo "Scanning for FASTQ pairs in: $INPUT_DIR"
 echo "Results will be saved in: $RESULTS_BASE"
 
 # Create base directories
-mkdir -p "$RESULTS_BASE"
+mkdir -p "$RESULTS_BASE" "$SCRATCH_DIR"
 if [ "$PIPELINE_HOST" = "palma" ]; then
     mkdir -p "$SCRATCH_DIR/slurm_logs"
 fi
 
 submitted=0
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # Find all R1 files and derive the matching R2
 while IFS= read -r R1; do
@@ -59,25 +60,28 @@ while IFS= read -r R1; do
         echo "            R2: $R2"
     else
         # Dispatch logic
-        if command -v sbatch &>/dev/null && [ "$PIPELINE_HOST" = "palma" ]; then
+        if [ "$PIPELINE_HOST" = "palma" ]; then
             echo "  [SUBMIT] $CASE_LABEL (Slurm)"
             sbatch --job-name="NGS_$CASE_LABEL" \
                    --cpus-per-task="$PIPELINE_THREADS" \
                    --mem="$PIPELINE_MEM" \
                    --time="$PIPELINE_TIME" \
                    --partition="$PIPELINE_PARTITION" \
-                   --output="$SCRATCH_DIR/slurm_logs/%j_$CASE_LABEL.out" \
-                   --error="$SCRATCH_DIR/slurm_logs/%j_$CASE_LABEL.err" \
+                   --output="$SCRATCH_DIR/slurm_logs/%j_${CASE_LABEL}_${TIMESTAMP}.out" \
+                   --error="$SCRATCH_DIR/slurm_logs/%j_${CASE_LABEL}_${TIMESTAMP}.err" \
                    "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2"
-        else
-            echo "  [RUN] $CASE_LABEL (Local)"
-            # Run in background on local machine
-            # We use a simple background execution here. 
-            # For multiple cases, this might overload the system if not careful.
-            # On Omen, we assume the user knows what they are doing.
+        elif [ "$PIPELINE_HOST" = "omen" ]; then
+            echo "  [RUN] $CASE_LABEL (Direct)"
             mkdir -p "$RESULTS_BASE/${CASE_LABEL}/log"
-            bash "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" > "$RESULTS_BASE/${CASE_LABEL}/log/pipeline.log" 2>&1 &
-            echo "    Log: $RESULTS_BASE/${CASE_LABEL}/log/pipeline.log"
+            LOG_FILE="$RESULTS_BASE/${CASE_LABEL}/log/pipeline_${TIMESTAMP}.log"
+            bash "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" 2>&1 | tee "$LOG_FILE"
+            echo "    Done. Log: $LOG_FILE"
+        else
+            echo "  [RUN] $CASE_LABEL (Background)"
+            mkdir -p "$RESULTS_BASE/${CASE_LABEL}/log"
+            LOG_FILE="$RESULTS_BASE/${CASE_LABEL}/log/pipeline_${TIMESTAMP}.log"
+            bash "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" > "$LOG_FILE" 2>&1 &
+            echo "    Log: $LOG_FILE"
         fi
     fi
 
@@ -87,6 +91,10 @@ done < <(find "$INPUT_DIR" -maxdepth 1 -name "*_R1_*.fastq.gz" | sort)
 echo ""
 echo "Finished."
 echo "  Cases processed: $submitted"
-if [ "$DRY_RUN" = false ] && [ "$PIPELINE_HOST" != "palma" ]; then
-    echo "  Jobs are running in the background. Check logs for progress."
+if [ "$DRY_RUN" = false ]; then
+    if [ "$PIPELINE_HOST" = "palma" ]; then
+        echo "  Jobs have been submitted to Slurm."
+    elif [ "$PIPELINE_HOST" != "omen" ]; then
+        echo "  Jobs are running in the background. Check logs for progress."
+    fi
 fi

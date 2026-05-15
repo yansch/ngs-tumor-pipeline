@@ -10,7 +10,7 @@ export PATH="/software/arriba_v2.5.1/bin:$PATH"
 export BASE_DIR="/software/arriba_v2.5.1"
 export REF_DIR="$BASE_DIR/references_hg19"
 export ARRIBA_LIB="$BASE_DIR/var/lib/arriba"
-export CNV_REF_DIR="/mnt/pipelines/ngs_tumor/reference/cnv"
+export CNV_REF_DIR="/mnt/pipelines/ngs-tumor-pipeline/reference/cnv"
 
 # --- Specific Reference Files ---
 export REF_GENOME="$REF_DIR/hs37d5viral.fa"
@@ -27,7 +27,7 @@ export ARRIBA_CYTOBANDS="$ARRIBA_LIB/cytobands_hg19_hs37d5_GRCh37_v2.5.1.tsv"
 export CNV_REFERENCE="$CNV_REF_DIR/panel_v4.1_reference.cnn"
 export RELEVANT_GENES="$CNV_REF_DIR/relevant_genes.csv"
 export CYTOBAND_TXT="$CNV_REF_DIR/cytoBand.txt"
-export PANEL_REGIONS="/mnt/pipelines/ngs_tumor/reference/panel_v4.1_hg19.csv"
+export PANEL_REGIONS="/mnt/pipelines/ngs-tumor-pipeline/reference/panel_v4.1_hg19.csv"
 
 # --- Resource Allocation ---
 export PIPELINE_THREADS=24
@@ -35,7 +35,8 @@ export PIPELINE_MEM="64G"
 export SORT_MEM_BASE=20000
 
 # --- Runtime & Output Paths ---
-export INPUT_DIR="/data/ngs_tumor/input/fastq"
-export VARIANTS_SEARCH_DIR="/data/ngs_tumor/input/vcf"
-export RESULTS_BASE="/data/ngs_tumor/output"
-export VENV_PATH="/mnt/pipelines/ngs_tumor/env"
+export SCRATCH_DIR="/data/ngs-tumor-pipeline/scratch"
+export INPUT_DIR="/data/ngs-tumor-pipeline/input/fastq"
+export VARIANTS_SEARCH_DIR="/data/ngs-tumor-pipeline/input/vcf"
+export RESULTS_BASE="/data/ngs-tumor-pipeline/output"
+export VENV_PATH="/mnt/pipelines/ngs-tumor-pipeline/env"
