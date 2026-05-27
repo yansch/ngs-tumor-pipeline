@@ -30,7 +30,7 @@ Go to your terminal on the HPC and run the following command.
 **Note:** Replace `<YOUR-TOKEN>` with the token you just copied, and ensure the URL matches your specific GitLab project path.
 
 ```bash
-git clone https://oauth2:<YOUR-TOKEN>@gitlab.com/your-username/ngs-tumor-pipeline.git
+git clone https://oauth2:<YOUR-TOKEN>@gitlab.git.nrw/uni-ms/neuropathologie-bioinformatik/ngs-tumor-pipeline.git
 cd ngs-tumor-pipeline
 
 ```
