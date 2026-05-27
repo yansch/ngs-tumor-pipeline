@@ -9,6 +9,25 @@ import tempfile
 
 import pysam
 
+
+def chrom_sort_key(chrom_value):
+    chrom = str(chrom_value).strip()
+    if chrom.startswith('chr'):
+        chrom = chrom[3:]
+
+    if chrom.isdigit():
+        return (0, int(chrom))
+
+    chrom_upper = chrom.upper()
+    if chrom_upper == 'X':
+        return (1, 23)
+    if chrom_upper == 'Y':
+        return (1, 24)
+    if chrom_upper in {'M', 'MT'}:
+        return (1, 25)
+
+    return (2, chrom_upper)
+
 def get_all_depths_bedcov(bam_file, regions_df):
     """
     Calculate mean depth for all regions using 'pysam.samtools.bedcov' for maximum speed.
@@ -116,8 +135,11 @@ def main():
     # Set default values if Gene is missing
     cov_df.loc[:, 'Gene'] = cov_df['Gene'].fillna("Unknown")
     
-    # Sort for plotting: Group by Gene, then by Target Name
-    cov_df = cov_df.sort_values(by=['Gene', 'Target'])
+    # Sort for plotting by genomic position, then group genes in that order.
+    cov_df.loc[:, 'chr_sort'] = cov_df['chr'].map(chrom_sort_key)
+    cov_df.loc[:, 'start_sort'] = pd.to_numeric(cov_df['start'], errors='coerce')
+    cov_df = cov_df.sort_values(by=['chr_sort', 'start_sort', 'Gene', 'Target']).reset_index(drop=True)
+    cov_df = cov_df.drop(columns=['chr_sort', 'start_sort'])
     
     print("Generating plot...")
     # --- Custom Coordinate System for Genealogical Spacing ---
@@ -158,7 +180,7 @@ def main():
     # Split into two subplots if many genes
     num_genes = len(all_gene_labels)
     if num_genes > 10:
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 10), dpi=300)
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8.5), dpi=300)
         split_gene_idx = num_genes // 2
         split_coord = all_gene_boundaries[split_gene_idx - 1]
         split_row_idx = 0
@@ -167,7 +189,7 @@ def main():
                 split_row_idx = i
                 break
     else:
-        fig, ax1 = plt.subplots(1, 1, figsize=(16, 6), dpi=300)
+        fig, ax1 = plt.subplots(1, 1, figsize=(16, 5.5), dpi=300)
         ax2 = None
         split_row_idx = len(cov_df)
 
@@ -197,17 +219,19 @@ def main():
                 ax.axvline(b - offset, color='black', linestyle='--', linewidth=0.5, alpha=0.3)
                 
         ax.set_xticks(sub_gene_positions)
-        ax.set_xticklabels(sub_gene_labels, rotation=45, fontsize=10, ha='right')
-        ax.set_ylabel('Mean Depth (X)', fontsize=11)
+        ax.set_xticklabels(sub_gene_labels, rotation=45, fontsize=12, ha='right')
+        ax.set_ylabel('Mean Depth (X)', fontsize=13)
         ax.set_ylim(0, y_limit)
         ax.grid(axis='y', linestyle=':', alpha=0.6)
         ax.set_xlim(-1, sub_x_offset[-1] + 1)
+        ax.tick_params(axis='y', labelsize=11)
+        ax.tick_params(axis='x', labelsize=12)
 
     plot_subset(ax1, 0, split_row_idx)
     if ax2:
         plot_subset(ax2, split_row_idx, len(cov_df))
     
-    plt.tight_layout()
+    plt.tight_layout(h_pad=1.0)
     print(f"Saving plot to {out_png}...")
     plt.savefig(out_png, dpi=300, bbox_inches='tight')
     plt.close()

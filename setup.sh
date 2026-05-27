@@ -38,6 +38,9 @@ fi
 
 source "$VENV_PATH/bin/activate"
 
+export PIP_CACHE_DIR="$SCRATCH_DIR/.pip_cache"
+mkdir -p "$PIP_CACHE_DIR"
+
 # Optimization: Parallel installs and cache usage
 echo "pip: Upgrading core tools..."
 pip install --quiet --upgrade pip setuptools wheel

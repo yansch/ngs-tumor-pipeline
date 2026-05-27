@@ -155,7 +155,9 @@ if [ ! -f "$BAM_FILE_CHR" ]; then
     samtools index "$BAM_FILE_CHR"
 fi
 
-module --force purge
+if command -v module >/dev/null 2>&1; then
+    module --force purge
+fi
 
 source "$PROJECT_DIR/config/common.sh"
 load_modules "$TOOLCHAIN_PYTHON" "$PYTHON_MODULE"
