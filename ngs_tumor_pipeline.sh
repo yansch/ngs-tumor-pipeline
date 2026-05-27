@@ -34,6 +34,7 @@ R1_PATH="$1"
 R2_PATH="$2"
 
 # --- Step 1: Bioinformatics (fastp, STAR, SAMtools, Arriba) ---
+purge_modules
 load_modules "$TOOLCHAIN_BIO" "$FASTP_MODULE" "$STAR_MODULE" "$SAMTOOLS_MODULE"
 
 # Resource Settings
@@ -155,9 +156,7 @@ if [ ! -f "$BAM_FILE_CHR" ]; then
     samtools index "$BAM_FILE_CHR"
 fi
 
-if command -v module >/dev/null 2>&1; then
-    module --force purge
-fi
+purge_modules
 
 source "$PROJECT_DIR/config/common.sh"
 load_modules "$TOOLCHAIN_PYTHON" "$PYTHON_MODULE"

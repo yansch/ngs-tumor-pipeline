@@ -35,7 +35,8 @@ fi
 
 load_modules() {
     if [ "$HAS_MODULE_SYSTEM" = true ]; then
-        for mod in "$@"; do
+        # Remove quotes from $@ to allow word splitting
+        for mod in $@; do
             [ -z "$mod" ] && continue
             module load "$mod"
         done
