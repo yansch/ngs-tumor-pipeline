@@ -118,7 +118,9 @@ if [ ! -f "$ARRIBA_OUT" ]; then
         -a "$REF_GENOME" -g "$ANNOTATION_GTF" -b "$ARRIBA_BLACKLIST" -k "$ARRIBA_KNOWN_FUSIONS" -t "$ARRIBA_TAGS" -p "$ARRIBA_PROTEIN_DOMAINS"
 
     # Visualization
-    load_modules "$R_MODULE"
+    purge_modules
+    load_modules "$R_PYTHON_COMPAT_MODULE"
+    
     DRAW_FUSIONS_R="draw_fusions.R"
     if [ -f "$ARRIBA_BASE/draw_fusions.R" ]; then
         DRAW_FUSIONS_R="$ARRIBA_BASE/draw_fusions.R"
