@@ -35,7 +35,6 @@ echo "📊 Results path:   $RESULTS_BASE"
 echo "-------------------------------------------------------"
 
 mkdir -p "$RESULTS_BASE" "$SCRATCH_DIR"
-[ "$PIPELINE_HOST" = "palma" ] && mkdir -p "$SCRATCH_DIR/slurm_logs"
 
 submitted=0
 
@@ -61,13 +60,15 @@ while IFS= read -r R1; do
     case "$PIPELINE_HOST" in
         palma)
             echo " 📤 [PALMA] Submitting Slurm job: $CASE_LABEL"
+             LOG_DIR="$RESULTS_BASE/${CASE_LABEL}/log"
+             mkdir -p "$LOG_DIR"
             sbatch --job-name="NGS_$CASE_LABEL" \
                    --cpus-per-task="$PIPELINE_THREADS" \
                    --mem="$PIPELINE_MEM" \
                    --time="$PIPELINE_TIME" \
                    --partition="$PIPELINE_PARTITION" \
-                   --output="$SCRATCH_DIR/slurm_logs/%j_${CASE_LABEL}_${TIMESTAMP}.out" \
-                   --error="$SCRATCH_DIR/slurm_logs/%j_${CASE_LABEL}_${TIMESTAMP}.err" \
+                 --output="$LOG_DIR/%j_${CASE_LABEL}_${TIMESTAMP}.out" \
+                 --error="$LOG_DIR/%j_${CASE_LABEL}_${TIMESTAMP}.err" \
                    "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2"
             ;;
         omen)
@@ -92,4 +93,7 @@ done < <(find "$INPUT_DIR" -maxdepth 1 -name "*_R1_*.fastq.gz" | sort)
 echo "-------------------------------------------------------"
 echo "😊 Submitted cases: $submitted"
 [ "$DRY_RUN" = true ] && echo "   Note: Dry-run complete. No jobs were executed."
+if [ "$PIPELINE_HOST" = "palma" ]; then
+    echo "   Tip: use 'bash monitor_jobs.sh' to check Palma job status and logs."
+fi
 echo "-------------------------------------------------------"

@@ -6,6 +6,11 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config/common.sh"
 
+if [ "$PIPELINE_HOST" != "palma" ]; then
+    echo "❌ monitor_jobs.sh is only available on Palma."
+    exit 1
+fi
+
 echo "-------------------------------------------------------"
 echo "🔍 NGS Pipeline Status for user: $USER"
 echo "-------------------------------------------------------"
@@ -49,15 +54,15 @@ echo ""
 
 # --- 3. Log Inspection Commands ---
 echo "📄 LOG ACCESS"
-# Get the 3 most recent log files to show examples
-RECENT_LOGS=$(ls -t "$SCRATCH_DIR/slurm_logs"/*.out 2>/dev/null | head -n 3 || true)
+# Get the 3 most recent sample log files to show examples
+RECENT_LOGS=$(find "$RESULTS_BASE" -path "*/log/*.out" -type f 2>/dev/null | sort -r | head -n 3 || true)
 
 if [ -z "$RECENT_LOGS" ]; then
-    echo "    No log files found in $SCRATCH_DIR/slurm_logs"
+    echo "    No log files found under $RESULTS_BASE/*/log"
 else
     echo "    To watch a running job:"
-    echo "    tail -f $SCRATCH_DIR/slurm_logs/[JOBID]_*.out"
-    echo "    tail -f $SCRATCH_DIR/slurm_logs/[JOBID]_*.err"
+    echo "    tail -f $RESULTS_BASE/<CASE>/log/[JOBID]_*.out"
+    echo "    tail -f $RESULTS_BASE/<CASE>/log/[JOBID]_*.err"
     echo ""
     echo "    Most recent log files:"
     for log in $RECENT_LOGS; do
