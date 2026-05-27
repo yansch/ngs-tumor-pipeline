@@ -291,7 +291,7 @@ echo "Cleaning up temporary files in $TMP_DIR..."
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
-echo "--------------------------------------------------------------------------------"
+echo "-------------------------------------------------------"
 echo "✅ Pipeline finished for ${CASE_LABEL}"
 echo "⏱️ Elapsed time: $(printf '%02d:%02d:%02d' $((DURATION/3600)) $((DURATION%3600/60)) $((DURATION%60)))"
-echo "--------------------------------------------------------------------------------"
+echo "-------------------------------------------------------"

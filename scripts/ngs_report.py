@@ -567,7 +567,7 @@ def main():
         supplementary_story.extend(focal_story)
 
     if supplementary_story:
-        story.extend(create_section_header("Supplementary", styles))
+        story.extend(create_section_header("Supplement", styles))
         story.extend(supplementary_story)
 
 

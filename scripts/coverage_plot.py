@@ -149,7 +149,6 @@ def main():
     
     all_gene_labels = []
     all_gene_positions = []
-    all_gene_boundaries = []
     
     palette = sns.color_palette("Set1", 9) + sns.color_palette("Set2", 8) + sns.color_palette("Dark2", 8)
     gene_colors = []
@@ -163,7 +162,6 @@ def main():
             if current_gene is not None:
                 all_gene_labels.append(current_gene)
                 all_gene_positions.append((gene_start_x + current_x - 1.0) / 2.0)
-                all_gene_boundaries.append(current_x - (inter_gap / 2.0))
                 current_x += inter_gap
             
             current_gene = row['Gene']
@@ -182,7 +180,10 @@ def main():
     if num_genes > 10:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8.5), dpi=300)
         split_gene_idx = num_genes // 2
-        split_coord = all_gene_boundaries[split_gene_idx - 1]
+        # Compute boundary between the two halves as midpoint between adjacent gene centers
+        left_center = all_gene_positions[split_gene_idx - 1]
+        right_center = all_gene_positions[split_gene_idx]
+        split_coord = (left_center + right_center) / 2.0
         split_row_idx = 0
         for i, xc in enumerate(x_coords):
             if xc > split_coord:
@@ -213,10 +214,6 @@ def main():
             if sub_x[0] <= pos <= sub_x[-1]:
                 sub_gene_labels.append(label)
                 sub_gene_positions.append(pos - offset)
-        
-        for b in all_gene_boundaries:
-            if sub_x[0] < b < sub_x[-1]:
-                ax.axvline(b - offset, color='black', linestyle='--', linewidth=0.5, alpha=0.3)
                 
         ax.set_xticks(sub_gene_positions)
         ax.set_xticklabels(sub_gene_labels, rotation=45, fontsize=12, ha='right')
