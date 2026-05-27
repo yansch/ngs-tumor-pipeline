@@ -5,15 +5,15 @@ export HAS_MODULE_SYSTEM=true
 
 # --- Toolchains (must be loaded before tool modules) ---
 export TOOLCHAIN_BIO="palma/2022a"
-export TOOLCHAIN_PYTHON="palma/2023b"
+export TOOLCHAIN_PYTHON="palma/2024a"
 
 # --- Tool Modules (loaded after their toolchain) ---
 export FASTP_MODULE="GCC/11.3.0 fastp/0.23.2"
 export STAR_MODULE="GCC/11.3.0 STAR/2.7.10b"
 export SAMTOOLS_MODULE="GCC/11.3.0 SAMtools/1.16.1"
-export PYTHON_MODULE="GCCcore/13.2.0 Python/3.11.5"
-export R_MODULE="GCC/11.3.0 OpenMPI/4.1.4 R/4.2.1"
-export R_PYTHON_COMPAT_MODULE="GCC/13.2.0 OpenMPI/4.1.6 R-bundle-Bioconductor/3.19-R-4.4.1"
+export PYTHON_MODULE="GCCcore/13.3.0 Python/3.12.3"
+export R_MODULE="palma/2024a GCC/13.3.0 OpenMPI/5.0.3 R/4.4.2"
+export R_PYTHON_COMPAT_MODULE="palma/2024a GCC/13.3.0 OpenMPI/5.0.3 R-bundle-Bioconductor/3.20-R-4.4.2"
 # jq/1.6 requires palma/2022b which conflicts with the default palma/2023b;
 # the pipeline falls back to python3 for JSON parsing automatically.
 

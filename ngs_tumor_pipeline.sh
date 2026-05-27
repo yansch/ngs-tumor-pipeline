@@ -150,25 +150,29 @@ fi
 ### BAM Re-headering for CNV Compatibility ##################################
 if [ ! -f "$BAM_FILE_CHR" ]; then
     echo "Adapting BAM header (adding 'chr' prefix)..."
-    samtools view -H "$BAM_FILE" | sed -e '/^@SQ/s/SN:\([^	]*\)/SN:chr\1/' > "$TMP_DIR/header_chr.sam"
+    samtools view -H "$BAM_FILE" | sed -e '/^@SQ/s/SN:\([^  ]*\)/SN:chr\1/' > "$TMP_DIR/header_chr.sam"
     samtools reheader "$TMP_DIR/header_chr.sam" "$BAM_FILE" > "$BAM_FILE_CHR"
     samtools index "$BAM_FILE_CHR"
 fi
 
-purge_modules
-source "$PROJECT_DIR/config/common.sh" # Re-source to restore variables
-load_modules "$TOOLCHAIN_PYTHON" "$PYTHON_MODULE" "$R_PYTHON_COMPAT_MODULE"
+module --force purge
+
+source "$PROJECT_DIR/config/common.sh"
+load_modules "$TOOLCHAIN_PYTHON" "$PYTHON_MODULE"
+load_modules "$R_PYTHON_COMPAT_MODULE" # This now pulls in palma/2024a safely
+
 load_ngs_python_env
 
-# Prevent Arriba's Python stdlib from leaking into the venv (PATH contamination)
 unset PYTHONPATH
-export MPLBACKEND=Agg  # Use headless matplotlib backend (no display required)
+export MPLBACKEND=Agg
 
 echo "Starting analysis for $CASE_LABEL..."
 
 ### CNV calling with CNVkit ################################################################
 if [ ! -f "$CNS_FILE" ]; then
     echo "Running CNVkit batch..."
+    # cnvkit.py will now use the Python from your venv but can find
+    # the R 4.4.2 libraries it needs for plotting/calculations.
     cnvkit.py batch "$BAM_FILE_CHR" --reference "$CNV_REFERENCE" --processes "$THREADS" \
         --drop-low-coverage --output-dir "$CNV_DIR" --diagram
 fi
