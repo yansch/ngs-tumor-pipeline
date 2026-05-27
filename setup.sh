@@ -6,6 +6,36 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config/common.sh"
 
+ENV_FILE="$PROJECT_DIR/.env"
+CURRENT_ONCOKB_TOKEN="${ONCOKB_API_TOKEN:-}"
+
+if [ -n "$CURRENT_ONCOKB_TOKEN" ]; then
+    printf '🔑 OncoKB token is already configured. Enter a new token to replace it, or press Enter to keep it: '
+else
+    printf '🔑 Enter your OncoKB API token (or press Enter to skip): '
+fi
+
+read -r -s ONCOKB_TOKEN_INPUT || true
+echo
+
+if [ -n "$ONCOKB_TOKEN_INPUT" ]; then
+    ONCOKB_API_TOKEN="$ONCOKB_TOKEN_INPUT"
+    if [ -f "$ENV_FILE" ]; then
+        tmp_env_file="$(mktemp)"
+        grep -v '^ONCOKB_API_TOKEN=' "$ENV_FILE" > "$tmp_env_file" || true
+        printf 'ONCOKB_API_TOKEN=%s\n' "$ONCOKB_API_TOKEN" >> "$tmp_env_file"
+        mv "$tmp_env_file" "$ENV_FILE"
+    else
+        printf 'ONCOKB_API_TOKEN=%s\n' "$ONCOKB_API_TOKEN" > "$ENV_FILE"
+    fi
+    chmod 600 "$ENV_FILE" 2>/dev/null || true
+    echo "✅ Saved OncoKB token to $ENV_FILE"
+elif [ -n "$CURRENT_ONCOKB_TOKEN" ]; then
+    echo "Keeping existing OncoKB token."
+else
+    echo "Skipping OncoKB token setup. You can rerun setup.sh later to add it."
+fi
+
 echo "-------------------------------------------------------"
 echo "🚀 Setting up NGS Tumor Pipeline on $PIPELINE_HOST"
 echo "-------------------------------------------------------"

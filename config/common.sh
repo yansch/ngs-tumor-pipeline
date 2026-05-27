@@ -7,6 +7,13 @@ CONF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # The project root is one level up
 export PROJECT_DIR="$(dirname "$CONF_DIR")"
 
+# Load local environment overrides, if present.
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+    set -a
+    source "$PROJECT_DIR/.env"
+    set +a
+fi
+
 # 2. Host Detection
 HOSTNAME_S=$(hostname -s)
 if [[ "$HOSTNAME_S" == palma* || "$HOSTNAME_S" == r* ]]; then

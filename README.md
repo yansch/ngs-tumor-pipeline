@@ -46,6 +46,8 @@ bash setup.sh
 
 ```
 
+During setup, you will be prompted for an optional OncoKB API token. Paste it and press Enter to save it, or just press Enter to keep the current token or skip for now. You can re-run the setup at any time to update it.
+
 ---
 
 ## 🧪 Step 4: Running the Pipeline
