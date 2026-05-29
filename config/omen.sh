@@ -36,7 +36,7 @@ export PIPELINE_MEM="64G"
 export SORT_MEM_BASE=20000
 
 # --- Runtime & Output Paths ---
-export SCRATCH_DIR="/data/ngs-tumor-pipeline/scratch"
+export SCRATCH_DIR="/data/ngs-tumor-pipeline"
 export INPUT_DIR="/data/ngs-tumor-pipeline/input/fastq"
 export VARIANTS_SEARCH_DIR="/data/ngs-tumor-pipeline/input/vcf"
 export RESULTS_BASE="/data/ngs-tumor-pipeline/output"

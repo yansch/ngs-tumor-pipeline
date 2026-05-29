@@ -31,6 +31,8 @@ else
     exit 1
 fi
 
+export MPLBACKEND=Agg
+
 # --- Helper Functions ---
 
 load_modules() {

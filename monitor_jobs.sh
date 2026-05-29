@@ -16,7 +16,7 @@ echo "🔍 NGS Pipeline Status for user: $USER"
 echo "-------------------------------------------------------"
 
 # --- 1. Active Queue Status ---
-echo "▶️  ACTIVE JOBS (squeue)"
+echo "👩🏼‍🔬  ACTIVE JOBS (squeue)"
 ACTIVE_JOBS=$(squeue -u "$USER" -o "%10i %20j %10T %10M %R" --noheader | grep "NGS_" || true)
 
 if [ -z "$ACTIVE_JOBS" ]; then

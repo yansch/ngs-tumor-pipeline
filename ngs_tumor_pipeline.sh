@@ -46,7 +46,7 @@ R2_base=$(basename "$R2_PATH" .fastq.gz)
 CASE_LABEL="${R1_base%_R1_001}"
 
 OUT_DIR="$RESULTS_BASE/${CASE_LABEL}"
-TMP_DIR="$SCRATCH_DIR/work/${CASE_LABEL}"
+TMP_DIR="$SCRATCH_DIR/tmp/${CASE_LABEL}"
 CNV_DIR="$OUT_DIR/cnv"
 LOG_DIR="$OUT_DIR/log"
 BAM_FILE="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.bam"
@@ -167,7 +167,6 @@ load_modules "$R_PYTHON_COMPAT_MODULE" # This now pulls in palma/2024a safely
 load_ngs_python_env
 
 unset PYTHONPATH
-export MPLBACKEND=Agg
 
 echo "Starting analysis for $CASE_LABEL..."
 
