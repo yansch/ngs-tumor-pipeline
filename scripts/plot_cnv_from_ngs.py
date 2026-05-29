@@ -195,9 +195,9 @@ def load_ngs_cnr_file(cnr_filepath, case_identifier):
         else:
             cnr_original_mean = original_log2_series.mean()
             cnr_original_std = original_log2_series.std()
-            # Restore biological log2 units by only centering, NOT dividing by SD
+            # Normalize by mean and SD to match reference scaling
             if cnr_original_std is not None and cnr_original_std > 1e-9:
-                df.loc[:, 'log2'] = (original_log2_series - cnr_original_mean)
+                df.loc[:, 'log2'] = (original_log2_series - cnr_original_mean) / cnr_original_std
             else:
                 df.loc[:, 'log2'] = 0.0
                 if cnr_original_std is None or cnr_original_std <= 1e-9:
@@ -274,8 +274,10 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
         return pd.DataFrame()
 
     if pd.notna(cnr_original_mean) and pd.notna(cnr_original_std):
-        # Restore biological log2 units by only centering
-        df.loc[:, 'log2'] = (df['log2'] - cnr_original_mean)
+        if cnr_original_std > 1e-9:
+            df.loc[:, 'log2'] = (df['log2'] - cnr_original_mean) / cnr_original_std
+        else:
+            df.loc[:, 'log2'] = 0.0
     else:
         print(f"Warning: CNS log2 values for {cns_filepath.name} cannot be normalized... Setting CNS log2 to NaN.",
               file=sys.stderr)

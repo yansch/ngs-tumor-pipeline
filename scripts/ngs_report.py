@@ -222,22 +222,21 @@ def generate_cnv_section(directory, doc_width, styles, is_metagenomics=False):
     story.append(Paragraph(f"Reference: {CNV_REFERENCE_FILE} ({CNV_REFERENCE_DATE})", styles['Normal']))
     cnvdir = os.path.join(directory, 'cnv')
 
-    # 1. Panel Coverage (Moved to top of section per user request)
+    # 1. Whole-genome CNV
+    plot = get_file_path(cnvdir, "cnv_plot.png")
+    if plot and (img := get_proportional_image(plot, doc_width * TABLE_WIDTH_FACTOR)):
+        story.append(KeepTogether([Paragraph("Genome-wide copy number profile", styles['SubHeader']), img]))
+    else:
+        story.append(Paragraph("Global CNV plot not found.", styles['Normal']))
+
+    # 2. Panel Coverage
     if not is_metagenomics:
         coverage_dir = os.path.join(cnvdir, 'coverage')
         cov = get_file_path(coverage_dir, "*_panel_coverage.png")
         if cov and (ci := get_proportional_image(cov, doc_width * TABLE_WIDTH_FACTOR)):
             ci.hAlign = 'CENTER'
-            # Removed explicit Spacer to reduce gap after reference line
+            story.append(Spacer(1, SUB_SECTION_SPACING))
             story.append(KeepTogether([Paragraph("Panel coverage", styles['SubHeader']), ci]))
-
-    # 2. Whole-genome CNV
-    plot = get_file_path(cnvdir, "cnv_plot.png")
-    if plot and (img := get_proportional_image(plot, doc_width * TABLE_WIDTH_FACTOR)):
-        story.append(Spacer(1, SUB_SECTION_SPACING))
-        story.append(KeepTogether([Paragraph("Genome-wide copy number profile", styles['SubHeader']), img]))
-    else:
-        story.append(Paragraph("Global CNV plot not found.", styles['Normal']))
 
     if story:
         story[-1].spaceAfter = SECTION_SPACING
