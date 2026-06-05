@@ -44,7 +44,7 @@ echo "-------------------------------------------------------"
 # Identify the best Python version (Mirroring Cluster 3.11)
 if [ "$PIPELINE_HOST" = "palma" ]; then
     echo "📦 [Cluster] Loading Python modules..."
-    load_modules "$TOOLCHAIN_PYTHON" "$PYTHON_MODULE"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
     PY_BIN="python3"
 elif command -v python3.11 >/dev/null 2>&1; then
     echo "✅ [Local] Found Python 3.11 (Recommended)"

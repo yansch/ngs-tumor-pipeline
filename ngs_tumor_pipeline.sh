@@ -5,7 +5,7 @@
 # Source configuration
 if [ -z "$PROJECT_DIR" ]; then
     # Determine project root from script location if not inherited (e.g., manual local run)
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${ARRIBA_VISUALIZATION_MODULES[@]}"
     if [[ -f "$SCRIPT_DIR/config/common.sh" ]]; then
         export PROJECT_DIR="$SCRIPT_DIR"
     elif [[ -f "$SCRIPT_DIR/../config/common.sh" ]]; then
@@ -35,7 +35,7 @@ R2_PATH="$2"
 
 # --- Step 1: Bioinformatics (fastp, STAR, SAMtools, Arriba) ---
 purge_modules
-load_modules "$TOOLCHAIN_BIO" "$FASTP_MODULE" "$STAR_MODULE" "$SAMTOOLS_MODULE"
+load_modules "$ALIGNMENT_TOOLCHAIN_MODULE" "${ALIGNMENT_MODULES[@]}"
 
 # Resource Settings
 THREADS=${SLURM_CPUS_PER_TASK:-$PIPELINE_THREADS}
@@ -119,7 +119,7 @@ if [ ! -f "$ARRIBA_OUT" ]; then
 
     # Visualization
     purge_modules
-    load_modules "$R_PYTHON_COMPAT_MODULE"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${ARRIBA_VISUALIZATION_MODULES[@]}"
     
     DRAW_FUSIONS_R="draw_fusions.R"
     if [ -f "$ARRIBA_BASE/draw_fusions.R" ]; then
@@ -150,6 +150,8 @@ if [ ! -f "$ARRIBA_OUT" ]; then
     fi
 fi
 
+load_modules "$ALIGNMENT_TOOLCHAIN_MODULE" "${ALIGNMENT_MODULES[@]}"
+
 ### BAM Re-headering for CNV Compatibility ##################################
 if [ ! -f "$BAM_FILE_CHR" ]; then
     echo "Adapting BAM header (adding 'chr' prefix)..."
@@ -161,8 +163,8 @@ fi
 purge_modules
 
 source "$PROJECT_DIR/config/common.sh"
-load_modules "$TOOLCHAIN_PYTHON" "$PYTHON_MODULE"
-load_modules "$R_PYTHON_COMPAT_MODULE" # This now pulls in palma/2024a safely
+load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}" # R bundle depends on the same Palma 2024a stack
 
 load_ngs_python_env
 
