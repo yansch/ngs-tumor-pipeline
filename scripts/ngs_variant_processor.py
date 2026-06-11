@@ -121,13 +121,13 @@ def categorize_variant(gene, consequences):
 
 def map_classification(val):
     if not val:
-        return "Relevanz unklar"
+        return ""
     s = val.lower().strip()
     if s in ["oncogenic", "likely oncogenic"]:
         return "pathogen"
     if s == "predicted oncogenic":
         return "wahrscheinlich pathogen"
-    return "Relevanz unklar"
+    return ""
 
 def classify_variant(v):
     if not ONCOKB_TOKEN:
@@ -157,7 +157,7 @@ def classify_variant(v):
         except Exception:
             pass
             
-    return "Relevanz unklar"
+    return ""
 
 # --- Main Parsing Logic ---
 
@@ -364,6 +364,58 @@ def process_annotation_file(file_path, comment_map):
         "comments": all_comments
     }
 
+def write_variants_to_xlsx(results, xlsx_path):
+    try:
+        import pandas as pd
+        from openpyxl.styles import PatternFill
+
+        df_variants = pd.DataFrame(results.get("variants", []))
+
+        # Track main candidate rows and drop the column
+        main_candidate_rows = []
+        if "is_main_candidate" in df_variants.columns:
+            main_candidate_rows = df_variants.index[df_variants["is_main_candidate"] == True].tolist()
+            df_variants = df_variants.drop(columns=["is_main_candidate"])
+
+        # Reorder columns
+        desired_order = ["gene", "hgvs", "classification", "depth", "vaf"]
+        for col in desired_order:
+            if col not in df_variants.columns:
+                df_variants[col] = None
+        
+        remaining_cols = [c for c in df_variants.columns if c not in desired_order]
+        df_variants = df_variants[desired_order + remaining_cols]
+
+        df_comments = pd.DataFrame(results.get("comments", []))
+
+        with pd.ExcelWriter(xlsx_path, engine='openpyxl') as writer:
+            df_variants.to_excel(writer, sheet_name="Variants", index=False)
+            df_comments.to_excel(writer, sheet_name="Comments", index=False)
+
+            # Apply row highlighting for main candidates on the Variants sheet
+            worksheet_var = writer.sheets["Variants"]
+            highlight_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+            for row_idx in range(2, worksheet_var.max_row + 1):
+                df_idx = row_idx - 2
+                if df_idx in main_candidate_rows:
+                    for col_idx in range(1, worksheet_var.max_column + 1):
+                        worksheet_var.cell(row=row_idx, column=col_idx).fill = highlight_fill
+
+            # Auto-fit column widths
+            for sheet_name in writer.sheets:
+                worksheet = writer.sheets[sheet_name]
+                for col in worksheet.columns:
+                    max_len = 0
+                    col_letter = col[0].column_letter
+                    for cell in col:
+                        val_to_check = str(cell.value or '')
+                        if cell.value is not None:
+                            max_len = max(max_len, max(len(line) for line in val_to_check.split('\n')))
+                    worksheet.column_dimensions[col_letter].width = max(max_len + 3, 10)
+        print(f"Processed variants Excel saved to {xlsx_path}")
+    except Exception as e:
+        print(f"Error saving variants Excel: {e}", file=sys.stderr)
+
 def main():
     parser = argparse.ArgumentParser(description="Extract and filter NGS variants for report.")
     parser.add_argument("input_json", help="Path to input VEP JSON(.gz) file.")
@@ -382,6 +434,16 @@ def main():
         with open(args.output, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2)
         print(f"Processed variants saved to {args.output}")
+
+        # Automatically generate Excel file alongside the JSON
+        if args.output.endswith('.json'):
+            xlsx_path = args.output[:-5] + '.xlsx'
+        elif args.output.endswith('.json.gz'):
+            xlsx_path = args.output[:-8] + '.xlsx'
+        else:
+            xlsx_path = args.output + '.xlsx'
+            
+        write_variants_to_xlsx(results, xlsx_path)
     else:
         print(json.dumps(results, indent=2))
 

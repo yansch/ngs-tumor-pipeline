@@ -184,6 +184,13 @@ unset PYTHONPATH
 
 echo "Starting analysis for $CASE_LABEL..."
 
+# Convert Arriba fusions TSV to Excel
+ARRIBA_XLSX="${ARRIBA_OUT%.tsv}.xlsx"
+if [ -f "$ARRIBA_OUT" ]; then
+    echo "Converting Arriba fusions TSV to Excel..."
+    python "$PROJECT_DIR/scripts/tsv_to_excel.py" "$ARRIBA_OUT" "$ARRIBA_XLSX"
+fi
+
 ### CNV calling with CNVkit #################################################
 if [ ! -f "$CNS_FILE" ]; then
     echo "Running CNVkit batch..."
