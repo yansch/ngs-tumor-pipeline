@@ -183,6 +183,7 @@ def load_ngs_cnr_file(cnr_filepath, case_identifier):
     is_antitarget = (df['gene'] == 'Antitarget')
     df.loc[is_antitarget, 'gene'] = pd.NA
 
+    # Keep raw values, compute original mean/std for optional standardization later
     original_log2_series = df['log2'].copy()
     cnr_original_mean = np.nan
     cnr_original_std = np.nan
@@ -191,17 +192,11 @@ def load_ngs_cnr_file(cnr_filepath, case_identifier):
         if len(original_log2_series.unique()) == 1:
             cnr_original_mean = original_log2_series.iloc[0]
             cnr_original_std = 0.0
-            df.loc[:, 'log2'] = 0.0
         else:
             cnr_original_mean = original_log2_series.mean()
             cnr_original_std = original_log2_series.std()
-            # Normalize by mean and SD to match reference scaling
-            if cnr_original_std is not None and cnr_original_std > 1e-9:
-                df.loc[:, 'log2'] = (original_log2_series - cnr_original_mean) / cnr_original_std
-            else:
-                df.loc[:, 'log2'] = 0.0
-                if cnr_original_std is None or cnr_original_std <= 1e-9:
-                    cnr_original_std = 0.0
+
+    # Return raw (unstandardized) data plus mean/std for downstream decisions
     return df, cnr_original_mean, cnr_original_std
 
 
@@ -232,7 +227,8 @@ def calculate_purified_log2(log2_obs, purity):
 
 
 def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
-                  cnr_original_mean: float, cnr_original_std: float):
+                  cnr_original_mean: float, cnr_original_std: float,
+                  standardize: bool = False):
     """
     Loads and preprocesses a .call.cns file, normalizes its log2 values.
     Ensures chromosome column is string type. chromosome_start_map keys are strings.
@@ -273,15 +269,19 @@ def load_cns_file(cns_filepath: Path, chromosome_start_map: dict,
         print(f"Warning: No valid data in {cns_filepath.name} after dropping NaNs in key CNS columns.", file=sys.stderr)
         return pd.DataFrame()
 
-    if pd.notna(cnr_original_mean) and pd.notna(cnr_original_std):
-        if cnr_original_std > 1e-9:
-            df.loc[:, 'log2'] = (df['log2'] - cnr_original_mean) / cnr_original_std
+    # Optionally standardize CNS log2 values to the CNVkit .cnr mean/std
+    if standardize:
+        if pd.notna(cnr_original_mean) and pd.notna(cnr_original_std):
+            if cnr_original_std > 1e-9:
+                df.loc[:, 'log2'] = (df['log2'] - cnr_original_mean) / cnr_original_std
+            else:
+                df.loc[:, 'log2'] = 0.0
         else:
-            df.loc[:, 'log2'] = 0.0
+            print(f"Warning: CNS log2 values for {cns_filepath.name} cannot be normalized... Setting CNS log2 to NaN.",
+                  file=sys.stderr)
+            df.loc[:, 'log2'] = np.nan
     else:
-        print(f"Warning: CNS log2 values for {cns_filepath.name} cannot be normalized... Setting CNS log2 to NaN.",
-              file=sys.stderr)
-        df.loc[:, 'log2'] = np.nan
+        df.loc[:, 'log2'] = pd.to_numeric(df['log2'], errors='coerce')
 
     df.loc[:, 'chromosome_absolute_start'] = df['chromosome'].map(chromosome_start_map)
 
@@ -650,13 +650,24 @@ def main():
 
     cns_filepath = args.cnr_file.with_suffix('.call.cns')
     print(f"Loading CNS segment data from: {cns_filepath}...")
-    cns_segments_df = load_cns_file(cns_filepath, chrom_map, cnr_original_mean, cnr_original_std)
+    # Load CNS raw values; standardization will be applied after purity adjustment using post-purity stats.
+    cns_segments_df = load_cns_file(cns_filepath, chrom_map, cnr_original_mean, cnr_original_std, standardize=False)
 
     if args.purity < 1.0:
         print(f"Applying tumor purity adjustment (Purity: {args.purity})...")
         ngs_raw_df.loc[:, 'log2'] = calculate_purified_log2(ngs_raw_df['log2'], args.purity)
         if not cns_segments_df.empty:
             cns_segments_df.loc[:, 'log2'] = calculate_purified_log2(cns_segments_df['log2'], args.purity)
+
+    # Always standardize (z-score) after purity adjustment using post-purity mean/std
+    post_mean = ngs_raw_df['log2'].dropna().mean() if not ngs_raw_df['log2'].dropna().empty else np.nan
+    post_std = ngs_raw_df['log2'].dropna().std() if not ngs_raw_df['log2'].dropna().empty else np.nan
+    if pd.notna(post_mean) and pd.notna(post_std) and post_std > 1e-9:
+        ngs_raw_df.loc[:, 'log2'] = (ngs_raw_df['log2'] - post_mean) / post_std
+        if not cns_segments_df.empty:
+            cns_segments_df.loc[:, 'log2'] = (cns_segments_df['log2'] - post_mean) / post_std
+    else:
+        print("Warning: Cannot standardize because post-purity mean/std invalid; skipping standardization.", file=sys.stderr)
 
     print("Preparing NGS data for plotting...")
     ngs_processed_df = prep_ngs_for_plotting(ngs_raw_df.copy(), chrom_map)

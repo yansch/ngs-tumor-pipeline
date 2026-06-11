@@ -12,10 +12,17 @@ export REF_DIR="$BASE_DIR/references_hg19"
 export ARRIBA_LIB="$BASE_DIR/var/lib/arriba"
 export CNV_REF_DIR="/mnt/pipelines/ngs-tumor-pipeline/resources"
 export REF_BASE="/opt/ngs-report-server"
+export VENV_PATH="/mnt/pipelines/ngs-tumor-pipeline/env"
+
+# --- Explicit Binary Track ---
+export BWA_BIN="$VENV_PATH/bin/bwa-mem2"
 
 # --- Specific Reference Files ---
 export REF_GENOME="$REF_DIR/hs37d5viral.fa"
+# STAR stays on the viral hs37d5-based index for Arriba only.
 export STAR_INDEX="$REF_DIR/STAR_index_hs37d5viral_GENCODE19"
+export STAR_INDEX_ARRIBA="$STAR_INDEX"
+export REF_GENOME_CNV="$REF_DIR/hg19.fa"
 export ANNOTATION_GTF="$REF_DIR/GENCODE19.gtf"
 export ASSEMBLY_FA="$REF_DIR/hs37d5viral.fa"
 export ARRIBA_BLACKLIST="$ARRIBA_LIB/blacklist_hg19_hs37d5_GRCh37_v2.5.1.tsv.gz"
@@ -40,4 +47,3 @@ export SCRATCH_DIR="/data/ngs-tumor-pipeline"
 export INPUT_DIR="/data/ngs-tumor-pipeline/input/fastq"
 export VARIANTS_SEARCH_DIR="/data/ngs-tumor-pipeline/input/vcf"
 export RESULTS_BASE="/data/ngs-tumor-pipeline/output"
-export VENV_PATH="/mnt/pipelines/ngs-tumor-pipeline/env"

@@ -6,7 +6,7 @@ export HAS_MODULE_SYSTEM=true
 # --- Ordered module groups ---
 # Keep the toolchain module first, then the dependent runtime modules.
 export ALIGNMENT_TOOLCHAIN_MODULE="palma/2022a"
-ALIGNMENT_MODULES=("GCC/11.3.0" "fastp/0.23.2" "STAR/2.7.10b" "SAMtools/1.16.1")
+ALIGNMENT_MODULES=("GCC/11.3.0" "fastp/0.23.2" "BWA/0.7.17" "STAR/2.7.10b" "SAMtools/1.16.1")
 
 export ANALYSIS_TOOLCHAIN_MODULE="palma/2024a"
 PYTHON_MODULES=("GCCcore/13.3.0" "Python/3.12.3")
@@ -22,7 +22,11 @@ export ARRIBA_DB="$ARRIBA_BASE/database"
 
 # --- Specific Reference Files ---
 export REF_GENOME="$ARRIBA_BASE/GRCh37viral.fa"
-export STAR_INDEX="$ARRIBA_BASE/STAR_index_GRCh37viral_GENCODE19"
+# STAR stays on the viral hs37d5-based index for Arriba only.
+export STAR_INDEX="$ARRIBA_BASE/STAR_index_hs37d5viral_GENCODE19"
+export STAR_INDEX_ARRIBA="$STAR_INDEX"
+export REF_GENOME_CNV="$REF_BASE/hg19/hg19.fa"
+export BWA_BIN="${BWA_BIN:-bwa}"
 export ANNOTATION_GTF="$ARRIBA_BASE/GENCODE19.gtf"
 export ARRIBA_BLACKLIST="$ARRIBA_DB/blacklist_hg19_hs37d5_GRCh37_v2.4.0.tsv.gz"
 export ARRIBA_KNOWN_FUSIONS="$ARRIBA_DB/known_fusions_hg19_hs37d5_GRCh37_v2.4.0.tsv.gz"

@@ -92,3 +92,5 @@ bash run.sh --dry-run
 * **Permission Denied:** Ensure you are running the scripts with `bash` (e.g., `bash setup.sh`).
 * **Token Expired:** If `git pull` or `git clone` stops working, repeat **Step 1** to generate a new token.
 * **Missing References:** This pipeline relies on shared references. If you get an error regarding "Reference path not found," please contact the lab administrator to ensure the reference folders are shared with your user ID.
+* **CNV BWA reference:** The CNV alignment step now uses `bwa mem` against a non-viral `hg19.fa`. On Palma this is expected at `/scratch/tmp/thomachr/references/hg19/hg19.fa`; on Omen it should be staged under `/software/arriba_v2.5.1/references_hg19/hg19.fa` or supplied through the host config / environment.
+* **BWA availability:** Palma loads `BWA/0.7.17` with the alignment toolchain. Omen does not use a module system, so `bwa` must be present on `PATH` or provided as an explicit binary path.

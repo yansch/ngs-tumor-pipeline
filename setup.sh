@@ -80,6 +80,32 @@ if [ -f "$PROJECT_DIR/requirements.txt" ]; then
     pip install -r "$PROJECT_DIR/requirements.txt"
 fi
 
+if [[ "$PIPELINE_HOST" == "omen" ]]; then
+    if command -v bwa-mem2 >/dev/null 2>&1; then
+        echo "✅ BWA-MEM2 already available: $(which bwa-mem2)"
+    else
+        echo "📥 Installing BWA-MEM2 locally (Omen)..."
+
+        tmp_dir="$(mktemp -d)"
+        (
+            set -e
+            cd "$tmp_dir"
+            # Cloning the bwa-mem2 repository with submodules (it requires them for safe compilation)
+            git clone --recursive https://github.com/bwa-mem2/bwa-mem2.git
+            cd bwa-mem2
+            
+            # Compile. Note: 'make' automatically optimizes for Omen's specific CPU architecture
+            make
+            
+            # Copy the compiled binary into the venv bin directory
+            cp bwa-mem2* "$VENV_PATH/bin/"
+        )
+        rm -rf "$tmp_dir"
+
+        echo "✅ BWA-MEM2 installed into venv bin"
+    fi
+fi
+
 # --- 3. Directory Infrastructure ---
 echo "📂 Initializing project directories..."
 mkdir -p "$INPUT_DIR" "$VARIANTS_SEARCH_DIR" "$RESULTS_BASE"

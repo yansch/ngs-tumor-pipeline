@@ -33,7 +33,7 @@ fi
 R1_PATH="$1"
 R2_PATH="$2"
 
-# --- Step 1: Bioinformatics (fastp, STAR, SAMtools, Arriba) ---
+# --- Step 1: Bioinformatics (fastp, STAR, SAMtools, BWA-MEM2, Arriba) ---
 purge_modules
 load_modules "$ALIGNMENT_TOOLCHAIN_MODULE" "${ALIGNMENT_MODULES[@]}"
 
@@ -49,14 +49,19 @@ OUT_DIR="$RESULTS_BASE/${CASE_LABEL}"
 TMP_DIR="$SCRATCH_DIR/tmp/${CASE_LABEL}"
 CNV_DIR="$OUT_DIR/cnv"
 LOG_DIR="$OUT_DIR/log"
-BAM_FILE="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.bam"
-BAM_FILE_CHR="${BAM_FILE%.bam}_chr.bam"
+
+BAM_FILE_ARRIBA="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.arriba.bam"
+BAM_FILE_CNV="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.cnv.bam"
+
 ARRIBA_OUT="$OUT_DIR/arriba/${R1_base}_fusions.tsv"
-CNR_FILE="$CNV_DIR/${R1_base}_Aligned.sortedByCoord.out_chr.cnr"
-CNS_FILE="$CNV_DIR/${R1_base}_Aligned.sortedByCoord.out_chr.cns"
 FASTP_DIR="$OUT_DIR/fastp"
 R1_TRIMMED="$TMP_DIR/${R1_base}.trimmed.fq.gz"
 R2_TRIMMED="$TMP_DIR/${R2_base}.trimmed.fq.gz"
+
+# Dynamic CNV file definitions based directly on the CNV BAM file name
+CNV_BASE=$(basename "$BAM_FILE_CNV" .bam)
+CNR_FILE="$CNV_DIR/${CNV_BASE}.cnr"
+CNS_FILE="$CNV_DIR/${CNV_BASE}.cns"
 
 # Create required directories
 mkdir -p "$TMP_DIR" "$CNV_DIR" "$OUT_DIR/arriba" "$OUT_DIR/fastp" "$LOG_DIR"
@@ -86,41 +91,60 @@ else
 fi
 echo "Total reads: $TOTAL_READS"
 
-### STAR Alignment ##########################################################
-if [ ! -f "$BAM_FILE" ]; then
-    echo "Running STAR alignment..."
-    rm -f "$TMP_DIR/star_tmp"*
+### STAR Alignment for Arriba ################################################
+if [ ! -f "$BAM_FILE_ARRIBA" ]; then
+    echo "Running STAR alignment for Arriba (index: $STAR_INDEX)..."
+    rm -f "$TMP_DIR/star_tmp_arriba"*
     STAR \
         --runThreadN "$THREADS" \
-        --outFileNamePrefix "$TMP_DIR/" \
+        --outFileNamePrefix "$TMP_DIR/arriba_" \
         --genomeDir "$STAR_INDEX" --genomeLoad NoSharedMemory \
         --readFilesIn "$R1_TRIMMED" "$R2_TRIMMED" --readFilesCommand zcat \
         --outStd BAM_Unsorted --outSAMtype BAM Unsorted --outSAMunmapped Within --outBAMcompression 0 \
         --outFilterMultimapNmax 50 --peOverlapNbasesMin 10 --alignSplicedMateMapLminOverLmate 0.5 --alignSJstitchMismatchNmax 5 -1 5 5 \
         --chimSegmentMin 10 --chimOutType WithinBAM HardClip --chimJunctionOverhangMin 10 --chimScoreDropMax 30 --chimScoreJunctionNonGTAG 0 --chimScoreSeparation 1 --chimSegmentReadGapMax 3 --chimMultimapNmax 50 | \
-    samtools sort -@ "$THREADS" -m $((SORT_MEM_BASE/THREADS))M -T "$TMP_DIR/star_tmp" -O bam -o "$BAM_FILE"
-    samtools index "$BAM_FILE"
+    samtools sort -@ "$THREADS" -m $((SORT_MEM_BASE/THREADS))M -T "$TMP_DIR/star_tmp_arriba" -O bam -o "$BAM_FILE_ARRIBA"
+    samtools index "$BAM_FILE_ARRIBA"
+fi
+
+### BWA-MEM2 Alignment for CNV #############################################
+if [ ! -f "$BAM_FILE_CNV" ]; then
+    echo "Running BWA-MEM2 alignment for CNV (reference: $REF_GENOME_CNV)..."
+    if ! command -v "$BWA_BIN" >/dev/null 2>&1; then
+        echo "Error: BWA/BWA-MEM2 binary not found (BWA_BIN=$BWA_BIN)." >&2
+        exit 1
+    fi
+    if [ ! -f "$REF_GENOME_CNV" ]; then
+        echo "Error: CNV reference file not found at $REF_GENOME_CNV." >&2
+        exit 1
+    fi
+
+    "$BWA_BIN" mem -t "$THREADS" "$REF_GENOME_CNV" "$R1_TRIMMED" "$R2_TRIMMED" | \
+    samtools sort -@ "$THREADS" -m $((SORT_MEM_BASE/THREADS))M -T "$TMP_DIR/bwa_tmp_cnv" -O bam -o "$BAM_FILE_CNV"
+    samtools index "$BAM_FILE_CNV"
 fi
 
 ### Arriba Fusion Detection ############################################
 if [ ! -f "$ARRIBA_OUT" ]; then
     echo "Running Arriba fusion detection..."
-    # Check if ARRIBA_BASE points to binary or if we use PATH
     ARRIBA_BIN="arriba"
     if [ -f "$ARRIBA_BASE/arriba" ]; then
         ARRIBA_BIN="$ARRIBA_BASE/arriba"
     fi
 
+    REF_GENOME_FOR_ARRIBA="${REF_GENOME_ARRIBA:-$REF_GENOME}"
+    ANNOTATION_GTF_FOR_ARRIBA="${ANNOTATION_GTF_ARRIBA:-$ANNOTATION_GTF}"
+
     "$ARRIBA_BIN" \
-        -x "$BAM_FILE" \
+        -x "$BAM_FILE_ARRIBA" \
         -o "$ARRIBA_OUT" \
         -f intronic,in_vitro,internal_tandem_duplication \
-        -a "$REF_GENOME" -g "$ANNOTATION_GTF" -b "$ARRIBA_BLACKLIST" -k "$ARRIBA_KNOWN_FUSIONS" -t "$ARRIBA_TAGS" -p "$ARRIBA_PROTEIN_DOMAINS"
+        -a "$REF_GENOME_FOR_ARRIBA" -g "$ANNOTATION_GTF_FOR_ARRIBA" -b "$ARRIBA_BLACKLIST" -k "$ARRIBA_KNOWN_FUSIONS" -t "$ARRIBA_TAGS" -p "$ARRIBA_PROTEIN_DOMAINS"
 
     # Visualization
     purge_modules
     load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${ARRIBA_VISUALIZATION_MODULES[@]}"
-    
+
     DRAW_FUSIONS_R="draw_fusions.R"
     if [ -f "$ARRIBA_BASE/draw_fusions.R" ]; then
         DRAW_FUSIONS_R="$ARRIBA_BASE/draw_fusions.R"
@@ -130,7 +154,7 @@ if [ ! -f "$ARRIBA_OUT" ]; then
 
     "$DRAW_FUSIONS_R" \
         --fusions="$ARRIBA_OUT" \
-        --alignments="$BAM_FILE" \
+        --alignments="$BAM_FILE_ARRIBA" \
         --output="$OUT_DIR/arriba/${R1_base}_fusions.pdf" \
         --annotation="$ANNOTATION_GTF" \
         --cytobands="$ARRIBA_CYTOBANDS" \
@@ -143,45 +167,32 @@ if [ ! -f "$ARRIBA_OUT" ]; then
     elif [ -f "$BASE_DIR/bin/quantify_virus_expression.sh" ]; then
         QUANTIFY_VIRUS_SH="$BASE_DIR/bin/quantify_virus_expression.sh"
     fi
-    
+
     if command -v "$QUANTIFY_VIRUS_SH" &>/dev/null || [ -f "$QUANTIFY_VIRUS_SH" ]; then
         echo "Quantifying virus expression..."
-        "$QUANTIFY_VIRUS_SH" "$BAM_FILE" "$OUT_DIR/arriba/${R1_base}_virus_expression.tsv" || true
+        "$QUANTIFY_VIRUS_SH" "$BAM_FILE_ARRIBA" "$OUT_DIR/arriba/${R1_base}_virus_expression.tsv" || true
     fi
 fi
 
-load_modules "$ALIGNMENT_TOOLCHAIN_MODULE" "${ALIGNMENT_MODULES[@]}"
-
-### BAM Re-headering for CNV Compatibility ##################################
-if [ ! -f "$BAM_FILE_CHR" ]; then
-    echo "Adapting BAM header (adding 'chr' prefix)..."
-    samtools view -H "$BAM_FILE" | sed -e '/^@SQ/s/SN:\([^  ]*\)/SN:chr\1/' > "$TMP_DIR/header_chr.sam"
-    samtools reheader "$TMP_DIR/header_chr.sam" "$BAM_FILE" > "$BAM_FILE_CHR"
-    samtools index "$BAM_FILE_CHR"
-fi
-
+# --- Step 2: Downstream Analysis (CNVkit, Custom Visualizations, Reporting) ---
 purge_modules
-
-source "$PROJECT_DIR/config/common.sh"
 load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
-load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}" # R bundle depends on the same Palma 2024a stack
+load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
 
 load_ngs_python_env
-
 unset PYTHONPATH
 
 echo "Starting analysis for $CASE_LABEL..."
 
-### CNV calling with CNVkit ################################################################
+### CNV calling with CNVkit #################################################
 if [ ! -f "$CNS_FILE" ]; then
     echo "Running CNVkit batch..."
-    # cnvkit.py will now use the Python from your venv but can find
-    # the R 4.4.2 libraries it needs for plotting/calculations.
-    cnvkit.py batch "$BAM_FILE_CHR" --reference "$CNV_REFERENCE" --processes "$THREADS" \
+    # Using --processes 0 to prevent cluster semaphore allocation errors
+    cnvkit.py batch "$BAM_FILE_CNV" --reference "$CNV_REFERENCE" --processes 0 \
         --drop-low-coverage --output-dir "$CNV_DIR" --diagram
 fi
 
-# CNVkit sex call (Omen feature)
+# CNVkit sex call
 if [ ! -f "$CNV_DIR/${R1_base}_sex.txt" ]; then
     echo "Running CNVkit sex call..."
     target_cnns=("$CNV_DIR"/*.targetcoverage.cnn)
@@ -191,36 +202,44 @@ if [ ! -f "$CNV_DIR/${R1_base}_sex.txt" ]; then
     fi
 fi
 
-### CNV Scatter Plots (Omen feature) #######################################################
+### CNV Scatter Plots #######################################################
 if [ ! -f "$CNV_DIR/${R1_base}_chrY.png" ]; then
-    echo "Generating chromosome-wise CNV scatter plots..."
-    CNR_GENES=$(cut -f4 "$CNR_FILE" | sort -u)
-
-    for chr in {1..22} X Y; do
-        chr_name="chr${chr}"
-        potential_genes=$(awk -F';' -v c="$chr_name" '$2 == c {print $1}' "$RELEVANT_GENES")
-        gene_list=""
-        for g in $potential_genes; do
-            if echo "$CNR_GENES" | grep -qx "$g"; then
-                gene_list="${gene_list}${g},"
-            fi
-        done
-        gene_list=${gene_list%,}
-
-        gene_args=""
-        if [ ! -z "$gene_list" ]; then
-            gene_args="-g $gene_list"
+    if [ ! -s "$CNR_FILE" ] || [ ! -s "$CNS_FILE" ]; then
+        echo "⚠️  Missing CNVkit outputs ($CNR_FILE or $CNS_FILE). Skipping CNV scatter plots."
+    else
+        echo "Generating chromosome-wise CNV scatter plots..."
+        CNR_GENES=$(cut -f4 "$CNR_FILE" 2>/dev/null | sort -u)
+        if [ -z "$CNR_GENES" ]; then
+            echo "⚠️  No gene entries found in $CNR_FILE. Skipping CNV scatter plots."
+            CNR_GENES=""
         fi
 
-        echo "Plotting CNV scatter for ${chr_name}..."
-        cnvkit.py scatter "$CNR_FILE" \
-            -s "$CNS_FILE" \
-            -c "${chr_name}" \
-            --title "${chr_name}" \
-            --segment-color 'purple' \
-            $gene_args \
-            -o "$CNV_DIR/${R1_base}_chr${chr}.png" || :
-    done
+        for chr in {1..22} X Y; do
+            chr_name="chr${chr}"
+            potential_genes=$(awk -F';' -v c="$chr_name" '$2 == c {print $1}' "$RELEVANT_GENES")
+            gene_list=""
+            for g in $potential_genes; do
+                if [ -n "$CNR_GENES" ] && echo "$CNR_GENES" | grep -qx "$g"; then
+                    gene_list="${gene_list}${g},"
+                fi
+            done
+            gene_list=${gene_list%,}
+
+            gene_args=""
+            if [ -n "$gene_list" ]; then
+                gene_args="-g $gene_list"
+            fi
+
+            echo "Plotting CNV scatter for ${chr_name}..."
+            cnvkit.py scatter "$CNR_FILE" \
+                -s "$CNS_FILE" \
+                -c "${chr_name}" \
+                --title "${chr_name}" \
+                --segment-color 'purple' \
+                $gene_args \
+                -o "$CNV_DIR/${R1_base}_chr${chr}.png" || :
+        done
+    fi
 fi
 
 ### Custom Plots & Reporting #################################################
@@ -242,7 +261,7 @@ if [ ! -f "$COVERAGE_DIR/${R1_base}_panel_coverage.png" ]; then
     echo "Generating Panel Coverage..."
     python "$PROJECT_DIR/scripts/coverage_plot.py" \
         "$PANEL_REGIONS" \
-        "$BAM_FILE_CHR" \
+        "$BAM_FILE_CNV" \
         "$COVERAGE_DIR/${R1_base}_panel_coverage.png" \
         "$COVERAGE_DIR/${R1_base}_panel_coverage.txt"
 fi
@@ -282,14 +301,10 @@ if [ -f "$VARIANTS_JSON" ]; then
 fi
 
 ### Final PDF Report
-if [ ! -f "$OUT_DIR/${R1_base}_ngs_report.pdf" ] || [ ! -z "$VAR_ARG" ]; then
+if [ ! -f "$OUT_DIR/${R1_base}_ngs_report.pdf" ] || [ -n "$VAR_ARG" ]; then
     echo "Generating Final PDF Report..."
     python "$PROJECT_DIR/scripts/ngs_report.py" "$OUT_DIR" "${R1_base}" $VAR_ARG
 fi
-
-# --- Cleanup ---
-echo "Cleaning up temporary files in $TMP_DIR..."
-# rm -rf "$TMP_DIR" # Uncomment after verification
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
