@@ -22,11 +22,12 @@ export ARRIBA_DB="$ARRIBA_BASE/database"
 
 # --- Specific Reference Files ---
 export REF_GENOME="$ARRIBA_BASE/GRCh37viral.fa"
-# STAR stays on the viral hs37d5-based index for Arriba only.
 export STAR_INDEX="$ARRIBA_BASE/STAR_index_hs37d5viral_GENCODE19"
 export STAR_INDEX_ARRIBA="$STAR_INDEX"
-export REF_GENOME_CNV="$REF_BASE/hg19/hg19.fa"
-export BWA_BIN="${BWA_BIN:-bwa}"
+
+export REF_GENOME_CNV="/scratch/tmp/jschnorr/references/hg19/hg19.fa"
+export BWA_BIN="bwa-mem2"
+
 export ANNOTATION_GTF="$ARRIBA_BASE/GENCODE19.gtf"
 export ARRIBA_BLACKLIST="$ARRIBA_DB/blacklist_hg19_hs37d5_GRCh37_v2.4.0.tsv.gz"
 export ARRIBA_KNOWN_FUSIONS="$ARRIBA_DB/known_fusions_hg19_hs37d5_GRCh37_v2.4.0.tsv.gz"
