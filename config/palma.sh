@@ -4,16 +4,18 @@
 export HAS_MODULE_SYSTEM=true
 
 # --- Ordered module groups ---
-# Keep the toolchain module first, then the dependent runtime modules.
+# Main Alignment Group (STAR, fastp, SAMtools)
 export ALIGNMENT_TOOLCHAIN_MODULE="palma/2022a"
 ALIGNMENT_MODULES=("GCC/11.3.0" "fastp/0.23.2" "BWA/0.7.17" "STAR/2.7.10b" "SAMtools/1.16.1")
 
+export BWA_TOOLCHAIN_MODULE="palma/2024a"
+BWA_MODULES=("GCC/13.3.0" "bwa-mem2/2.2.1" "SAMtools/1.16.1")
+
+# Downstream Analysis Group
 export ANALYSIS_TOOLCHAIN_MODULE="palma/2024a"
 PYTHON_MODULES=("GCCcore/13.3.0" "Python/3.12.3")
 ARRIBA_VISUALIZATION_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R/4.4.2")
 R_BIOCONDUCTOR_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2")
-# jq/1.6 requires palma/2022b which conflicts with the default palma/2023b;
-# the pipeline falls back to python3 for JSON parsing automatically.
 
 # --- Reference Base Paths ---
 export REF_BASE="/scratch/tmp/thomachr/references"
@@ -25,6 +27,7 @@ export REF_GENOME="$ARRIBA_BASE/GRCh37viral.fa"
 export STAR_INDEX="$ARRIBA_BASE/STAR_index_hs37d5viral_GENCODE19"
 export STAR_INDEX_ARRIBA="$STAR_INDEX"
 
+# Path to your newly indexed hg19 reference genome
 export REF_GENOME_CNV="/scratch/tmp/jschnorr/references/hg19/hg19.fa"
 export BWA_BIN="bwa-mem2"
 

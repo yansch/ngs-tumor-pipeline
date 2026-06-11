@@ -110,6 +110,11 @@ fi
 ### BWA-MEM2 Alignment for CNV #############################################
 if [ ! -f "$BAM_FILE_CNV" ]; then
     echo "Running BWA-MEM2 alignment for CNV (reference: $REF_GENOME_CNV)..."
+    
+    # Load dedicated BWA environment from config (swaps to 2024a/GCC13)
+    purge_modules
+    load_modules "$BWA_TOOLCHAIN_MODULE" "${BWA_MODULES[@]}"
+
     if ! command -v "$BWA_BIN" >/dev/null 2>&1; then
         echo "Error: BWA/BWA-MEM2 binary not found (BWA_BIN=$BWA_BIN)." >&2
         exit 1
@@ -122,6 +127,10 @@ if [ ! -f "$BAM_FILE_CNV" ]; then
     "$BWA_BIN" mem -t "$THREADS" "$REF_GENOME_CNV" "$R1_TRIMMED" "$R2_TRIMMED" | \
     samtools sort -@ "$THREADS" -m $((SORT_MEM_BASE/THREADS))M -T "$TMP_DIR/bwa_tmp_cnv" -O bam -o "$BAM_FILE_CNV"
     samtools index "$BAM_FILE_CNV"
+
+    # Restore main alignment environment from config (swaps back to 2022a)
+    purge_modules
+    load_modules "$ALIGNMENT_TOOLCHAIN_MODULE" "${ALIGNMENT_MODULES[@]}"
 fi
 
 ### Arriba Fusion Detection ############################################
@@ -249,7 +258,7 @@ if [ ! -f "$CNV_DIR/${R1_base}_chrY.png" ]; then
     fi
 fi
 
-### Custom Plots & Reporting #################################################
+### Custom Plots & Reporting ################################# Rhine-Westphalia ---
 
 # Purity Plots
 if [ ! -f "$OUT_DIR/cnv/cnv_plot_purity_0.1.png" ]; then
