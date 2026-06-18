@@ -6,10 +6,10 @@ export HAS_MODULE_SYSTEM=true
 # --- Ordered module groups ---
 # Main Alignment Group (STAR, fastp, SAMtools)
 export ALIGNMENT_TOOLCHAIN_MODULE="palma/2022a"
-ALIGNMENT_MODULES=("GCC/11.3.0" "fastp/0.23.2" "BWA/0.7.17" "STAR/2.7.10b" "SAMtools/1.16.1")
+ALIGNMENT_MODULES=("GCC/11.3.0" "fastp/0.23.2""STAR/2.7.10b" "SAMtools/1.16.1")
 
 export BWA_TOOLCHAIN_MODULE="palma/2024a"
-BWA_MODULES=("GCC/13.3.0" "bwa-mem2/2.2.1" "SAMtools/1.16.1")
+BWA_MODULES=("GCC/13.3.0" "bwa-mem2/2.2.1")
 
 # Downstream Analysis Group
 export ANALYSIS_TOOLCHAIN_MODULE="palma/2024a"
