@@ -4,9 +4,17 @@
 export HAS_MODULE_SYSTEM=true
 
 # --- Ordered module groups ---
-# Main Alignment Group (STAR, fastp, SAMtools)
-export ALIGNMENT_TOOLCHAIN_MODULE="palma/2022a"
-ALIGNMENT_MODULES=("GCC/11.3.0" "fastp/0.23.2" "STAR/2.7.10b" "SAMtools/1.16.1")
+# Preprocessing (fastp)
+export FASTP_TOOLCHAIN_MODULE="palma/2022a"
+FASTP_MODULES=("GCC/11.3.0" "fastp/0.23.2")
+
+# Alignment (STAR)
+export STAR_TOOLCHAIN_MODULE="palma/2024a"
+STAR_MODULES=("GCC/13.3.0" "STAR/2.7.11b")
+
+# SAMtools (for STAR/BWA pipes)
+export SAMTOOLS_TOOLCHAIN_MODULE="palma/2024a"
+SAMTOOLS_MODULES=("GCC/13.3.0" "SAMtools/1.21")
 
 export BWA_TOOLCHAIN_MODULE="palma/2024a"
 BWA_MODULES=("GCC/13.3.0" "bwa-mem2/2.2.1")

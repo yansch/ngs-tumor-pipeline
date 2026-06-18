@@ -35,7 +35,7 @@ R2_PATH="$2"
 
 # --- Step 1: Bioinformatics (fastp, STAR, SAMtools, BWA-MEM2, Arriba) ---
 purge_modules
-load_modules "$ALIGNMENT_TOOLCHAIN_MODULE" "${ALIGNMENT_MODULES[@]}"
+load_modules "$FASTP_TOOLCHAIN_MODULE" "${FASTP_MODULES[@]}"
 
 # Resource Settings
 THREADS=${SLURM_CPUS_PER_TASK:-$PIPELINE_THREADS}
@@ -95,6 +95,8 @@ echo "Total reads: $TOTAL_READS"
 if [ ! -f "$BAM_FILE_ARRIBA" ]; then
     echo "Running STAR alignment for Arriba (index: $STAR_INDEX)..."
     rm -f "$TMP_DIR/star_tmp_arriba"*
+    purge_modules
+    load_modules "$STAR_TOOLCHAIN_MODULE" "${STAR_MODULES[@]}" "${SAMTOOLS_MODULES[@]}"
     STAR \
         --runThreadN "$THREADS" \
         --outFileNamePrefix "$TMP_DIR/arriba_" \
@@ -113,7 +115,7 @@ if [ ! -f "$BAM_FILE_CNV" ]; then
     
     # Load dedicated BWA environment from config (swaps to 2024a/GCC13)
     purge_modules
-    load_modules "$BWA_TOOLCHAIN_MODULE" "${BWA_MODULES[@]}"
+    load_modules "$BWA_TOOLCHAIN_MODULE" "${BWA_MODULES[@]}" "${SAMTOOLS_MODULES[@]}"
 
     if ! command -v "$BWA_BIN" >/dev/null 2>&1; then
         echo "Error: BWA/BWA-MEM2 binary not found (BWA_BIN=$BWA_BIN)." >&2
@@ -127,10 +129,6 @@ if [ ! -f "$BAM_FILE_CNV" ]; then
     "$BWA_BIN" mem -t "$THREADS" "$REF_GENOME_CNV" "$R1_TRIMMED" "$R2_TRIMMED" | \
     samtools sort -@ "$THREADS" -m $((SORT_MEM_BASE/THREADS))M -T "$TMP_DIR/bwa_tmp_cnv" -O bam -o "$BAM_FILE_CNV"
     samtools index "$BAM_FILE_CNV"
-
-    # Restore main alignment environment from config (swaps back to 2022a)
-    purge_modules
-    load_modules "$ALIGNMENT_TOOLCHAIN_MODULE" "${ALIGNMENT_MODULES[@]}"
 fi
 
 ### Arriba Fusion Detection ############################################
