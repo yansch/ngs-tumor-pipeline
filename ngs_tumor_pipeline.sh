@@ -309,7 +309,7 @@ VAR_ARG=""
 if [ -f "$VARIANTS_JSON" ]; then
     echo "Processing variants: $VARIANTS_JSON"
     python "$PROJECT_DIR/scripts/ngs_variant_processor.py" "$VARIANTS_JSON" \
-        --ref-dir "$REF_BASE" \
+        --ref-dir "$PROJECT_DIR/resources" \
         -o "$PROCESSED_VARS"
     VAR_ARG="--variants-json $PROCESSED_VARS"
 fi
