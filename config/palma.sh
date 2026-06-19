@@ -22,7 +22,7 @@ BWA_MODULES=("GCC/13.3.0" "bwa-mem2/2.2.1")
 # Downstream Analysis Group
 export ANALYSIS_TOOLCHAIN_MODULE="palma/2024a"
 PYTHON_MODULES=("GCCcore/13.3.0" "Python/3.12.3")
-ARRIBA_VISUALIZATION_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R/4.4.2")
+ARRIBA_VISUALIZATION_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2")
 R_BIOCONDUCTOR_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2")
 
 # --- Reference Base Paths ---
