@@ -71,11 +71,38 @@ def build_hgvs(tx, hgvsg):
         return p_part
     return hgvsg or ""
 
+def format_hgvs_genomic(vid, hgvsg=None):
+    if vid:
+        m = re.match(r"^(?:chr)?(\d+|[XYM])-(\d+)-([A-Z]+)-([A-Z]+)$", vid, re.IGNORECASE)
+        if m:
+            chrom, pos, ref, alt = m.groups()
+            return f"{chrom}:g.{pos}{ref}>{alt}"
+    
+    if hgvsg:
+        m = re.match(r"^NC_0*(\d+)\.\d+:g\.(\d+)([A-Z]+)>([A-Z]+)$", hgvsg)
+        if m:
+            chrom_num, pos, ref, alt = m.groups()
+            chrom = str(int(chrom_num))
+            if chrom == "23": chrom = "X"
+            elif chrom == "24": chrom = "Y"
+            return f"{chrom}:g.{pos}{ref}>{alt}"
+            
+        m = re.match(r"^(?:chr)?(\d+|[XYM]):g\.(\d+)([A-Z]+)>([A-Z]+)$", hgvsg, re.IGNORECASE)
+        if m:
+            chrom, pos, ref, alt = m.groups()
+            return f"{chrom}:g.{pos}{ref}>{alt}"
+            
+    return hgvsg or ""
+
 def extract_alteration(hgvsp):
     if not hgvsp:
         return None
+    p_match = re.search(r"(p\.\S+)", hgvsp)
+    if not p_match:
+        return None
+    p_str = p_match.group(1)
     # fs
-    fs_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2})fs(?:Ter)?(\d+)?\)?", hgvsp)
+    fs_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2})fs(?:Ter)?(\d+)?\)?", p_str)
     if fs_m:
         aa1 = AA3TO1.get(fs_m.group(1), fs_m.group(1))
         pos = fs_m.group(2)
@@ -83,20 +110,20 @@ def extract_alteration(hgvsp):
         term = fs_m.group(4) or ""
         return f"{aa1}{pos}{aa2}fs*{term}"
     # stop gained
-    sg_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)(Ter)\)?", hgvsp)
+    sg_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)(Ter)\)?", p_str)
     if sg_m:
         aa1 = AA3TO1.get(sg_m.group(1), sg_m.group(1))
         pos = sg_m.group(2)
         return f"{aa1}{pos}*"
     # missense
-    ms_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2})\)?", hgvsp)
+    ms_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2})\)?", p_str)
     if ms_m:
         aa1 = AA3TO1.get(ms_m.group(1), ms_m.group(1))
         pos = ms_m.group(2)
         aa2 = AA3TO1.get(ms_m.group(3), ms_m.group(3))
         return f"{aa1}{pos}{aa2}"
     # del/dup/ins
-    del_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)(del|dup|ins)\)?", hgvsp)
+    del_m = re.match(r"p\.\(?([A-Z][a-z]{2})(\d+)(del|dup|ins)\)?", p_str)
     if del_m:
         aa1 = AA3TO1.get(del_m.group(1), del_m.group(1))
         pos = del_m.group(2)
@@ -135,6 +162,9 @@ def classify_variant(v):
     
     headers = {"Authorization": f"Bearer {ONCOKB_TOKEN}", "Accept": "application/json"}
     
+    classification = ""
+    
+    # 1. Try genomic query (byHGVSg)
     if v.get("hgvsg"):
         try:
             r = requests.get(f"{ONCOKB_BASE}/annotate/mutations/byHGVSg?hgvsg={v['hgvsg']}&referenceGenome=GRCh37", 
@@ -142,22 +172,23 @@ def classify_variant(v):
             if r.status_code == 200:
                 data = r.json()
                 if data.get("oncogenic"):
-                    return map_classification(data["oncogenic"])
+                    classification = map_classification(data["oncogenic"])
         except Exception:
             pass
             
-    if v.get("alteration") and v.get("gene"):
+    # 2. If no valid classification found, try fallback by protein change
+    if not classification and v.get("alteration") and v.get("gene"):
         try:
             r = requests.get(f"{ONCOKB_BASE}/annotate/mutations/byProteinChange?hugoSymbol={v['gene']}&alteration={v['alteration']}&referenceGenome=GRCh37",
                              headers=headers, timeout=10)
             if r.status_code == 200:
                 data = r.json()
                 if data.get("oncogenic"):
-                    return map_classification(data["oncogenic"])
+                    classification = map_classification(data["oncogenic"])
         except Exception:
             pass
             
-    return ""
+    return classification
 
 # --- Main Parsing Logic ---
 
@@ -258,6 +289,7 @@ def process_annotation_file(file_path, comment_map):
                     qc_variants.append({
                         "gene": tx.get("hgnc", ""),
                         "hgvs": build_hgvs(tx, variant.get("hgvsg")),
+                        "hgvsg": format_hgvs_genomic(vid, variant.get("hgvsg")),
                         "vid": vid,
                         "depth": depth,
                         "vaf": vaf
@@ -268,6 +300,7 @@ def process_annotation_file(file_path, comment_map):
                 qc_variants.append({
                     "gene": "",
                     "hgvs": variant.get("hgvsg") or vid or "",
+                    "hgvsg": format_hgvs_genomic(vid, variant.get("hgvsg")),
                     "vid": vid,
                     "depth": depth,
                     "vaf": vaf
@@ -288,7 +321,7 @@ def process_annotation_file(file_path, comment_map):
                 candidate = {
                     "gene": tx.get("hgnc"),
                     "hgvs": tert_hs["label"] if tert_hs else build_hgvs(tx, variant.get("hgvsg")),
-                    "hgvsg": variant.get("hgvsg", ""),
+                    "hgvsg": format_hgvs_genomic(vid, variant.get("hgvsg")),
                     "alteration": extract_alteration(tx.get("hgvsp")),
                     "vid": vid,
                     "depth": depth,
