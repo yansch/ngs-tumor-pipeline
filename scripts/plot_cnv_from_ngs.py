@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 import sys
 import re
+import json
 from os import path
 
 import numpy as np
@@ -701,6 +702,59 @@ def main():
         case_identifier, ngs_processed_df, cns_segments_df, ngs_gene_reps,
         chroms_df, arm_boundaries, args.output_dir, args.output_filename, plot_y_lim
     )
+
+    # Save CNV calls to JSON for report generation
+    # Only save for the main/purity-unadjusted run (or when not running purity variants)
+    out_filename_str = str(args.output_filename) if args.output_filename else ""
+    if args.output_filename is None or out_filename_str == "cnv_plot.png":
+        amplifications = []
+        deletions = []
+
+        def _is_cdkn2ab(gene_name):
+            if pd.isna(gene_name):
+                return False
+            gene_tokens = {token.strip().upper() for token in str(gene_name).split('/') if token.strip()}
+            return bool(gene_tokens.intersection({"CDKN2A", "CDKN2B"}))
+
+        if not ngs_gene_reps.empty:
+            # Sort by log2 magnitude descending
+            sorted_reps = ngs_gene_reps.copy()
+            sorted_reps["abs_log2"] = sorted_reps["log2"].abs()
+            sorted_reps = sorted_reps.sort_values(by="abs_log2", ascending=False)
+            
+            for _, row in sorted_reps.iterrows():
+                gene = row["gene"]
+                log2_val = row["log2"]
+                if log2_val >= 1.5:
+                    amplifications.append({"gene": gene, "log2": round(float(log2_val), 2)})
+                elif _is_cdkn2ab(gene):
+                    if log2_val < -2.0:
+                        deletions.append({
+                            "gene": gene,
+                            "log2": round(float(log2_val), 2),
+                            "status": "Homozygous Deletion"
+                        })
+                    elif -2.0 <= log2_val <= -1.5:
+                        deletions.append({
+                            "gene": gene,
+                            "log2": round(float(log2_val), 2),
+                            "status": "Deletion"
+                        })
+                elif log2_val < -2.0:
+                    deletions.append({
+                        "gene": gene,
+                        "log2": round(float(log2_val), 2),
+                        "status": "Deletion"
+                    })
+                    
+        json_path = args.output_dir / "cnv_genes.json"
+        try:
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump({"amplifications": amplifications, "deletions": deletions}, f, indent=2)
+            print(f"Saved CNV summary: {json_path}")
+        except Exception as e:
+            print(f"Error saving CNV summary: {e}", file=sys.stderr)
+
     print("Done.")
 
 

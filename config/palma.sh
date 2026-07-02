@@ -62,7 +62,7 @@ export SORT_MEM_BASE=20000
 
 # --- Runtime & Output Paths ---
 export SCRATCH_DIR="/scratch/tmp/$USER/ngs-tumor-pipeline"
-export INPUT_DIR="$SCRATCH_DIR/input/fastq"
-export VARIANTS_SEARCH_DIR="$SCRATCH_DIR/input/vcf"
+export INPUT_DIR="$SCRATCH_DIR/input"
+export VARIANTS_SEARCH_DIR="$SCRATCH_DIR/input"
 export RESULTS_BASE="${RESULTS_BASE:-$SCRATCH_DIR/output}"
 export VENV_PATH="$SCRATCH_DIR/env"

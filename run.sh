@@ -83,7 +83,33 @@ while IFS= read -r R1; do
     # --- Dispatch Logic ---
     case "$PIPELINE_HOST" in
         palma)
-            echo " 📤 [PALMA] Submitting Slurm job: $CASE_LABEL"
+            echo " 📤 [PALMA] Calculating dynamic runtime limit for: $CASE_LABEL"
+            R1_size=$(wc -c < "$R1")
+            R2_size=$(wc -c < "$R2")
+            x=767  # Time needed per GB in seconds, based on NovaseqX data by YA
+
+            combined_bytes=$(( R1_size + R2_size ))
+            combined_size_gb=$(printf "%.2f" "$(echo "scale=2; $combined_bytes / 1073741824" | bc)")
+
+            # Add 1.0 GB padding to total bytes
+            padded_bytes=$(( combined_bytes + 1073741824 ))
+            calculated_time_needed=$(( padded_bytes * x / 1073741824 ))
+
+            # Add 20% buffer
+            buffered_time=$(( calculated_time_needed * 120 / 100))
+            
+            # Ensure a minimum time limit of 30 minutes (1800 seconds)
+            if (( buffered_time < 1800 )); then
+                buffered_time=1800
+            fi
+
+            hours=$(( buffered_time / 3600 ))
+            mins=$(( (buffered_time % 3600) / 60 ))
+            secs=59
+
+            duration=$(printf "%02d:%02d:%02d" $hours $mins $secs)
+            echo " 📤 [PALMA] Submitting Slurm job: $CASE_LABEL | size: ${combined_size_gb} GB | estimated limit: $duration"
+
             LOG_DIR="$RESULTS_BASE/${CASE_LABEL}/log"
             mkdir -p "$LOG_DIR"
             
@@ -91,7 +117,7 @@ while IFS= read -r R1; do
                 --job-name="NGS_$CASE_LABEL"
                 --cpus-per-task="$PIPELINE_THREADS"
                 --mem="$PIPELINE_MEM"
-                --time="$PIPELINE_TIME"
+                --time="$duration"
                 --partition="$PIPELINE_PARTITION"
                 --output="$LOG_DIR/%j_${CASE_LABEL}_${TIMESTAMP}.out"
                 --error="$LOG_DIR/%j_${CASE_LABEL}_${TIMESTAMP}.err"

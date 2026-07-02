@@ -57,12 +57,23 @@ def get_popmax(v):
         af_values.append(v["esp"]["allAf"])
     return max(af_values) if af_values else None
 
+def convert_aa_3to1(hgvsp):
+    if not hgvsp:
+        return hgvsp
+    res = hgvsp
+    for aa3, aa1 in AA3TO1.items():
+        res = res.replace(aa3, aa1)
+    return res
+
 def build_hgvs(tx, hgvsg):
     hgvsc = tx.get("hgvsc", "")
     hgvsp = tx.get("hgvsp", "")
     p_match = re.search(r"(p\.\S+)", hgvsp)
     p_part = p_match.group(1) if p_match else ""
     
+    if p_part:
+        p_part = convert_aa_3to1(p_part)
+        
     if hgvsc and p_part:
         return f"{hgvsc};{p_part}"
     if hgvsc:
@@ -282,24 +293,51 @@ def process_annotation_file(file_path, comment_map):
 
             vid = variant.get("vid", "")
             
+            # Filter out non-coding variants, keeping only coding, splice, or TERT hotspot variants
+            alt_allele = pos.get("altAlleles", [])[vi] if vi < len(pos.get("altAlleles", [])) else ""
+            tert_key = f"{pos.get('chromosome')}-{pos.get('position')}-{pos.get('refAllele')}-{alt_allele}"
+            is_tert_hs = tert_key in TERT_HOTSPOTS
+            
+            is_coding = False
+            for tx in variant.get("transcripts", []):
+                category = categorize_variant(tx.get("hgnc"), tx.get("consequence", []))
+                if category != "excluded":
+                    is_coding = True
+                    break
+            
+            if not is_coding and not is_tert_hs:
+                continue
+            
             # QC Variant logic (PASS + depth >= 10 + popmax <= 1%)
-            found_qc = False
+            # Only keep TERT mutations, or coding variants with a 'p.' annotation
+            selected_tx = None
             for tx in variant.get("transcripts", []):
                 if tx.get("source") == "RefSeq" and tx.get("isCanonical"):
-                    qc_variants.append({
-                        "gene": tx.get("hgnc", ""),
-                        "hgvs": build_hgvs(tx, variant.get("hgvsg")),
-                        "hgvsg": format_hgvs_genomic(vid, variant.get("hgvsg")),
-                        "vid": vid,
-                        "depth": depth,
-                        "vaf": vaf
-                    })
-                    found_qc = True
-                    break
-            if not found_qc:
+                    gene_name = tx.get("hgnc", "")
+                    hgvsp_val = tx.get("hgvsp", "")
+                    category = categorize_variant(gene_name, tx.get("consequence", []))
+                    has_p_annotation = "p." in hgvsp_val
+                    
+                    if gene_name == "TERT" or (category == "coding" and has_p_annotation):
+                        selected_tx = tx
+                        break
+            
+            # Fallback to any transcript matching the rule if no canonical RefSeq transcript matches
+            if not selected_tx:
+                for tx in variant.get("transcripts", []):
+                    gene_name = tx.get("hgnc", "")
+                    hgvsp_val = tx.get("hgvsp", "")
+                    category = categorize_variant(gene_name, tx.get("consequence", []))
+                    has_p_annotation = "p." in hgvsp_val
+                    
+                    if gene_name == "TERT" or (category == "coding" and has_p_annotation):
+                        selected_tx = tx
+                        break
+                        
+            if selected_tx:
                 qc_variants.append({
-                    "gene": "",
-                    "hgvs": variant.get("hgvsg") or vid or "",
+                    "gene": selected_tx.get("hgnc", ""),
+                    "hgvs": build_hgvs(selected_tx, variant.get("hgvsg")),
                     "hgvsg": format_hgvs_genomic(vid, variant.get("hgvsg")),
                     "vid": vid,
                     "depth": depth,
@@ -425,14 +463,25 @@ def write_variants_to_xlsx(results, xlsx_path):
             df_variants.to_excel(writer, sheet_name="Variants", index=False)
             df_comments.to_excel(writer, sheet_name="Comments", index=False)
 
-            # Apply row highlighting for main candidates on the Variants sheet
+            # Apply row highlighting: main candidates yellow, high VAF background variants red/pink
             worksheet_var = writer.sheets["Variants"]
-            highlight_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+            main_highlight = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+            vaf_highlight = PatternFill(start_color="FFEAE6", end_color="FFEAE6", fill_type="solid")
+            
             for row_idx in range(2, worksheet_var.max_row + 1):
                 df_idx = row_idx - 2
-                if df_idx in main_candidate_rows:
+                is_main = df_idx in main_candidate_rows
+                
+                # Check VAF from df_variants
+                vaf_val = df_variants.iloc[df_idx].get("vaf")
+                is_high_vaf = vaf_val is not None and vaf_val > 0.05
+                
+                if is_main:
                     for col_idx in range(1, worksheet_var.max_column + 1):
-                        worksheet_var.cell(row=row_idx, column=col_idx).fill = highlight_fill
+                        worksheet_var.cell(row=row_idx, column=col_idx).fill = main_highlight
+                elif is_high_vaf:
+                    for col_idx in range(1, worksheet_var.max_column + 1):
+                        worksheet_var.cell(row=row_idx, column=col_idx).fill = vaf_highlight
 
             # Auto-fit column widths
             for sheet_name in writer.sheets:

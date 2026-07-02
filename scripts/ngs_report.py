@@ -229,6 +229,68 @@ def generate_cnv_section(directory, doc_width, styles, is_metagenomics=False):
     else:
         story.append(Paragraph("Global CNV plot not found.", styles['Normal']))
 
+    # List the amp/del panel genes below the plot
+    cnv_genes_file = os.path.join(cnvdir, "cnv_genes.json")
+    if os.path.exists(cnv_genes_file):
+        try:
+            with open(cnv_genes_file, "r", encoding="utf-8") as f:
+                cnv_genes_data = json.load(f)
+            
+            amps = cnv_genes_data.get("amplifications", [])
+            dels = cnv_genes_data.get("deletions", [])
+            
+            if amps or dels:
+                table_data = [[
+                    Paragraph("<b>Gene</b>", styles['TableCell']),
+                    Paragraph("<b>CNV Status</b>", styles['TableCell']),
+                    Paragraph("<b>Deviation (log2)</b>", styles['TableCell'])
+                ]]
+                
+                for item in amps:
+                    table_data.append([
+                        Paragraph(item['gene'], styles['TableCell']),
+                        Paragraph('<font color="#B22222"><b>Amplification</b></font>', styles['TableCell']),
+                        Paragraph(f"+{item['log2']:.2f}" if isinstance(item['log2'], (int, float)) else str(item['log2']), styles['TableCell'])
+                    ])
+                    
+                for item in dels:
+                    deletion_status = item.get('status', 'Deletion')
+                    deletion_color = "#0B4F9C" if deletion_status == "Homozygous Deletion" else "#1F77B4"
+                    table_data.append([
+                        Paragraph(item['gene'], styles['TableCell']),
+                        Paragraph(f'<font color="{deletion_color}"><b>{deletion_status}</b></font>', styles['TableCell']),
+                        Paragraph(f"{item['log2']:.2f}" if isinstance(item['log2'], (int, float)) else str(item['log2']), styles['TableCell'])
+                    ])
+                    
+                target_width = doc_width * TABLE_WIDTH_FACTOR
+                col_widths = [0.3 * target_width, 0.4 * target_width, 0.3 * target_width]
+                
+                ts = TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.25, BLACK),
+                    ('BOX', (0, 0), (-1, -1), 0.5, BLACK),
+                    ('ALIGN', (2, 0), (2, -1), 'CENTER'),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+                ])
+                
+                for r_idx in range(1, len(table_data)):
+                    bg = WHITE if r_idx % 2 == 1 else LIGHT_GREY
+                    ts.add('BACKGROUND', (0, r_idx), (-1, r_idx), bg)
+                    
+                cnv_table = Table(table_data, colWidths=col_widths, hAlign='CENTER', repeatRows=1)
+                cnv_table.setStyle(ts)
+                
+                story.append(Spacer(1, 0.1 * inch))
+                story.append(KeepTogether([
+                    Paragraph("Focal copy number alterations of panel genes", styles['SubHeader']),
+                    cnv_table
+                ]))
+            else:
+                story.append(Spacer(1, 0.1 * inch))
+                story.append(Paragraph("No focal copy number amplifications (log2 >= 1.5) or deletions detected under current thresholds.", styles['Normal']))
+        except Exception as e:
+            print(f"Warning: Could not process CNV genes summary: {e}")
+
     # 2. Panel Coverage
     if not is_metagenomics:
         coverage_dir = os.path.join(cnvdir, 'coverage')
@@ -380,21 +442,38 @@ def create_variant_table(variants, styles, doc_width, is_qc=False):
         vaf_col_idx = 3
 
     table_data = [[Paragraph(f"<b>{h}</b>", styles['TableCell']) for h in headers]]
+    highlight_rows = []
 
-    for v in variants:
+    for idx, v in enumerate(variants):
+        vaf = v.get('vaf')
+        row_idx = idx + 1 # offset by 1 for header row
+        
         if is_qc:
-            table_data.append([
-                Paragraph(highlight_gene_text(v.get("gene", "")), styles['TableCell']),
-                Paragraph(v.get("hgvs", ""), styles['TableCell']),
-                Paragraph(f"{v.get('vaf', 0)*100:.1f}%" if v.get('vaf') is not None else "N/A", styles['TableCell']),
-                Paragraph(str(v.get("depth", "N/A")), styles['TableCell'])
-            ])
+            vaf_val = vaf * 100 if vaf is not None else 0
+            vaf_str = f"{vaf_val:.1f}%" if vaf is not None else "N/A"
+            gene_txt = v.get("gene", "")
+            hgvs_txt = v.get("hgvs", "")
+            depth_str = str(v.get("depth", "N/A"))
+            
+            if vaf is not None and vaf > 0.05:
+                highlight_rows.append(row_idx)
+                gene_cell = Paragraph(f"<b>{highlight_gene_text(gene_txt)}</b>", styles['TableCell'])
+                hgvs_cell = Paragraph(f"<b>{hgvs_txt}</b>", styles['TableCell'])
+                vaf_cell = Paragraph(f"<b>{vaf_str}</b>", styles['TableCell'])
+                depth_cell = Paragraph(f"<b>{depth_str}</b>", styles['TableCell'])
+            else:
+                gene_cell = Paragraph(highlight_gene_text(gene_txt), styles['TableCell'])
+                hgvs_cell = Paragraph(hgvs_txt, styles['TableCell'])
+                vaf_cell = Paragraph(vaf_str, styles['TableCell'])
+                depth_cell = Paragraph(depth_str, styles['TableCell'])
+                
+            table_data.append([gene_cell, hgvs_cell, vaf_cell, depth_cell])
         else:
             table_data.append([
                 Paragraph(highlight_gene_text(v.get("gene", "")), styles['TableCell']),
                 Paragraph(v.get("hgvs", ""), styles['TableCell']),
                 Paragraph(f"<i>{v.get('classification', 'Relevanz unklar')}</i>", styles['TableCell']),
-                Paragraph(f"{v.get('vaf', 0)*100:.1f}%" if v.get('vaf') is not None else "N/A", styles['TableCell']),
+                Paragraph(f"{vaf*100:.1f}%" if vaf is not None else "N/A", styles['TableCell']),
                 Paragraph(str(v.get("depth", "N/A")), styles['TableCell'])
             ])
 
@@ -410,6 +489,10 @@ def create_variant_table(variants, styles, doc_width, is_qc=False):
         ('ALIGN', (vaf_col_idx, 0), (-1, -1), 'CENTER'),
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
     ])
+
+    # Add background color highlights for rows that exceed report cutoff
+    for r_idx in highlight_rows:
+        ts.add('BACKGROUND', (0, r_idx), (-1, r_idx), colors.HexColor("#FFEAE6"))
 
     if is_qc:
         # Reduce spacing for QC rows
@@ -449,16 +532,22 @@ def generate_qc_variants_section(doc_width, styles, variants_data):
     qc_vars = [v for v in variants if not v.get("is_main_candidate")]
     
     if qc_vars:
-        story.append(Paragraph("All detected variants", styles['SubHeader']))
+        story.append(Paragraph("All detected coding variants", styles['SubHeader']))
         table = create_variant_table(qc_vars, styles, doc_width, is_qc=True)
         if table:
             story.append(table)
+
+        qc_vids = {v.get("vid") for v in qc_vars if v.get("vid")}
 
         # Add Unified Comments to QC variants
         comments = variants_data.get("comments", [])
         if comments:
             story.append(Spacer(1, 4))
             for c in comments:
+                # Skip the comment if its variant isn't in the QC list
+                if c.get("vid") not in qc_vids:
+                    continue
+                    
                 c_text = f"<b>{c['gene']} {c['hgvsc']}:</b> {c['comment']}"
                 if c.get("date"):
                     c_text += f" (<i>{c['date']}</i>)"
