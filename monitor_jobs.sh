@@ -55,18 +55,18 @@ estimate_remaining_time() {
 
 # --- 1. Active Queue Status ---
 echo "👩🏼‍🔬  ACTIVE JOBS (squeue)"
-ACTIVE_JOBS=$(squeue -u "$USER" -o "%10i %20j %10T %10M %19S %R" --noheader | grep "NGS_" || true)
+ACTIVE_JOBS=$(squeue -u "$USER" -o "%i|%j|%T|%M|%S|%R" --noheader | grep "NGS_" || true)
 
 if [ -z "$ACTIVE_JOBS" ]; then
     echo "    No active NGS jobs found in the queue."
 else
     printf "    %-10s %-20s %-10s %-10s %-10s %-s %-s\n" "JOBID" "CASE" "STATE" "TIME" "REMAINING" "NODE/REASON" "OUT LOG"
-    while read -r id name state time start extra; do
+    while IFS='|' read -r id name state time start extra; do
         remaining_time="N/A"
         out_log="N/A"
         case_label="${name#NGS_}"
         if [ -n "$id" ] && [ -n "$case_label" ]; then
-            out_log="tail -f \"$RESULTS_BASE/$case_label/log/${id}_${case_label}_*.out\""
+            out_log="tail -f $RESULTS_BASE/$case_label/log/${id}_${case_label}_*.out"
         fi
         if [[ "$state" == "RUNNING" && "$start" != "N/A" && "$start" != "Unknown" ]]; then
             remaining_time=$(estimate_remaining_time "$name" "$start")
