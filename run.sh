@@ -91,21 +91,15 @@ while IFS= read -r R1; do
             combined_bytes=$(( R1_size + R2_size ))
             combined_size_gb=$(printf "%.2f" "$(echo "scale=2; $combined_bytes / 1073741824" | bc)")
 
-            # Add 1.0 GB padding to total bytes
-            padded_bytes=$(( combined_bytes + 1073741824 ))
-            calculated_time_needed=$(( padded_bytes * x / 1073741824 ))
-
-            # Add 20% buffer
-            buffered_time=$(( calculated_time_needed * 120 / 100))
-            
             # Ensure a minimum time limit of 30 minutes (1800 seconds)
-            if (( buffered_time < 1800 )); then
-                buffered_time=1800
+            calculated_time_needed=$(( combined_bytes * x / 1073741824 ))
+            if (( calculated_time_needed < 1800 )); then
+                calculated_time_needed=1800
             fi
 
-            hours=$(( buffered_time / 3600 ))
-            mins=$(( (buffered_time % 3600) / 60 ))
-            secs=59
+            hours=$(( calculated_time_needed / 3600 ))
+            mins=$(( (calculated_time_needed % 3600) / 60 ))
+            secs=$(( calculated_time_needed % 60 ))
 
             duration=$(printf "%02d:%02d:%02d" $hours $mins $secs)
             echo " 📤 [PALMA] Submitting Slurm job: $CASE_LABEL | size: ${combined_size_gb} GB | estimated limit: $duration"
