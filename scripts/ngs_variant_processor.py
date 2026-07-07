@@ -8,44 +8,97 @@ import argparse
 import requests
 from datetime import datetime
 
-# --- Configuration & Constants ---
-GENE_LIST = {
-    "BRAF", "BCOR", "CD79B", "CTNNB1", "EGFR", "ERBB2", "FGFR1",
-    "GNA11", "GNAQ", "GNAS", "H3-3A", "H3-3B", "H3C2", "H3C1", "H3C3",
-    "IDH1", "IDH2", "KRAS", "MET", "NRAS", "MYD88", "PTEN", "RET",
-    "SMARCB1", "TERT", "TP53", "PDGFRA", "PDGFRB", "PIK3CA",
-    "DICER1", "KIT", "CDKN2A", "CDKN2B"
-}
-
-CODING_CSQ = {
-    "missense_variant", "nonsense_variant", "stop_gained", "stop_lost",
-    "start_lost", "frameshift_variant", "inframe_insertion", "inframe_deletion",
-    "protein_altering_variant", "incomplete_terminal_codon_variant"
-}
-
-SPLICE_CSQ = {
-    "splice_acceptor_variant", "splice_donor_variant", "splice_region_variant"
-}
-
-ALWAYS_EXCLUDED_CSQ = {
-    "synonymous_variant", "mature_miRNA_variant", "NMD_transcript_variant"
-}
-
 AA3TO1 = {
     "Ala": "A", "Arg": "R", "Asn": "N", "Asp": "D", "Cys": "C", "Gln": "Q", "Glu": "E", "Gly": "G",
     "His": "H", "Ile": "I", "Leu": "L", "Lys": "K", "Met": "M", "Phe": "F", "Pro": "P", "Ser": "S",
     "Thr": "T", "Trp": "W", "Tyr": "Y", "Val": "V", "Ter": "*"
 }
 
-TERT_HOTSPOTS = {
-    "5-1295228-G-A": {"label": "C228T Promotor-Mutation", "classification": "pathogen"},
-    "5-1295250-G-A": {"label": "C250T Promotor-Mutation", "classification": "pathogen"},
-}
+GENE_LIST = set()
+CODING_CSQ = set()
+SPLICE_CSQ = set()
+ALWAYS_EXCLUDED_CSQ = set()
+TERT_HOTSPOTS = {}
 
 ONCOKB_TOKEN = os.environ.get("ONCOKB_API_TOKEN", "")
 ONCOKB_BASE = "https://www.oncokb.org/api/v1"
 
 # --- Helper Functions ---
+
+def load_json_file(file_path):
+    if file_path.endswith(".gz"):
+        with gzip.open(file_path, 'rt', encoding='utf-8') as f:
+            return json.load(f)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def detect_vcs_label(data):
+    if not isinstance(data, dict):
+        return None
+
+    for key_path in (
+        ("vcs",),
+        ("vcsType",),
+        ("sciobaseVcs",),
+        ("metadata", "vcs"),
+        ("metadata", "vcsType"),
+        ("metadata", "sciobaseVcs"),
+    ):
+        node = data
+        for key in key_path:
+            if not isinstance(node, dict) or key not in node:
+                node = None
+                break
+            node = node.get(key)
+        if node:
+            return str(node)
+
+    return None
+
+def load_filter_config(config_path, vcs_label=None):
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Filter config not found at {config_path}")
+
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+
+    profiles = config.get("profiles") if isinstance(config, dict) else None
+    if profiles is None and isinstance(config, dict):
+        profiles = config
+    if not isinstance(profiles, dict):
+        profiles = {}
+
+    default_name = config.get("default_vcs") if isinstance(config, dict) else None
+    selected_name = vcs_label or default_name or "default"
+
+    profile = profiles.get(selected_name) or profiles.get("default") or {}
+    if not profile and isinstance(config, dict):
+        profile = config
+
+    merged = {}
+    for key in ("gene_list", "coding_csq", "splice_csq", "always_excluded_csq"):
+        value = profile.get(key)
+        if value:
+            merged[key] = value
+
+    merged["min_depth"] = profile.get("min_depth", 10)
+    merged["max_popmax"] = profile.get("max_popmax", 0.01)
+    merged["main_min_vaf"] = profile.get("main_min_vaf", 0.05)
+
+    tert_hotspots = profile.get("tert_hotspots")
+    if isinstance(tert_hotspots, dict) and tert_hotspots:
+        merged["tert_hotspots"] = tert_hotspots
+
+    return selected_name, merged
+
+def apply_filter_profile(profile):
+    global GENE_LIST, CODING_CSQ, SPLICE_CSQ, ALWAYS_EXCLUDED_CSQ, TERT_HOTSPOTS
+
+    GENE_LIST = set(profile.get("gene_list", []))
+    CODING_CSQ = set(profile.get("coding_csq", []))
+    SPLICE_CSQ = set(profile.get("splice_csq", []))
+    ALWAYS_EXCLUDED_CSQ = set(profile.get("always_excluded_csq", []))
+    TERT_HOTSPOTS = dict(profile.get("tert_hotspots", {}))
 
 def get_popmax(v):
     af_values = []
@@ -160,12 +213,7 @@ def categorize_variant(gene, consequences):
 def map_classification(val):
     if not val:
         return ""
-    s = val.lower().strip()
-    if s == "oncogenic":
-        return "pathogen"
-    if s in ["likely oncogenic", "predicted oncogenic"]:
-        return "wahrscheinlich pathogen"
-    return ""
+    return val.strip()
 
 def classify_variant(v):
     if not ONCOKB_TOKEN:
@@ -254,23 +302,38 @@ def load_variant_comments(reference_dir):
     
     return comment_map
 
-def find_latest_comment(vid, comment_map):
+def get_comments_for_variant(vid, comment_map):
     if not vid or not comment_map:
-        return None
+        return []
     entries = comment_map.get(vid)
     if not entries:
-        return None
-    # Sort by date descending
-    sorted_entries = sorted(entries, key=lambda x: x.get("date", ""), reverse=True)
-    return sorted_entries[0]
+        return []
 
-def process_annotation_file(file_path, comment_map):
-    if file_path.endswith(".gz"):
-        with gzip.open(file_path, 'rt', encoding='utf-8') as f:
-            data = json.load(f)
-    else:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+    # Sort by date descending and remove duplicate comment rows while preserving order.
+    sorted_entries = sorted(
+        entries,
+        key=lambda x: (x.get("date", ""), x.get("comment", ""), x.get("gene", ""), x.get("hgvsc", "")),
+        reverse=True,
+    )
+    seen = set()
+    unique_entries = []
+    for entry in sorted_entries:
+        key = (
+            entry.get("date", ""),
+            entry.get("comment", ""),
+            entry.get("gene", ""),
+            entry.get("hgvsc", ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_entries.append(entry)
+    return unique_entries
+
+def process_annotation_file(file_path, comment_map, filter_profile=None):
+    if filter_profile is None:
+        raise ValueError("filter_profile is required")
+    data = load_json_file(file_path)
 
     main_candidates = []
     qc_variants = []
@@ -283,13 +346,12 @@ def process_annotation_file(file_path, comment_map):
         if not samples: continue
         sample = samples[0]
         depth = sample.get("totalDepth", 0)
-        if depth < 10: continue
+        if depth < filter_profile.get("min_depth", 10): continue
         v_freqs = sample.get("variantFrequencies", [])
 
         for vi, variant in enumerate(pos.get("variants", [])):
             vaf = v_freqs[vi] if vi < len(v_freqs) else None
             pm = get_popmax(variant)
-            if pm is not None and pm > 0.01: continue
 
             vid = variant.get("vid", "")
             
@@ -346,11 +408,15 @@ def process_annotation_file(file_path, comment_map):
 
             # Main Candidate logic (Gene list + consequences)
             for tx in variant.get("transcripts", []):
-                if tx.get("source") != "RefSeq" or not tx.get("isCanonical") or tx.get("hgnc") not in GENE_LIST:
+                gene_name = tx.get("hgnc", "")
+                if tx.get("source") != "RefSeq" or not tx.get("isCanonical") or gene_name not in GENE_LIST:
                     continue
                 
-                category = categorize_variant(tx.get("hgnc"), tx.get("consequence", []))
+                category = categorize_variant(gene_name, tx.get("consequence", []))
                 if category == "excluded": continue
+
+                if pm is not None and pm > filter_profile.get("max_popmax", 0.01):
+                    continue
 
                 alt_allele = pos.get("altAlleles", [])[vi] if vi < len(pos.get("altAlleles", [])) else ""
                 tert_key = f"{pos.get('chromosome')}-{pos.get('position')}-{pos.get('refAllele')}-{alt_allele}"
@@ -386,9 +452,9 @@ def process_annotation_file(file_path, comment_map):
     main_variants = []
     for v in main_candidates:
         if v["category"] == "splice":
-            if v["classification"] not in ["pathogen", "wahrscheinlich pathogen"]:
+            if (v["classification"] or "").strip().lower() not in ["oncogenic", "likely oncogenic", "predicted oncogenic"]:
                 continue
-        if v["vaf"] is None or v["vaf"] <= 0.05:
+        if v["vaf"] is None or v["vaf"] <= filter_profile.get("main_min_vaf", 0.05):
             continue
         main_variants.append(v)
 
@@ -416,16 +482,17 @@ def process_annotation_file(file_path, comment_map):
         for v in variants:
             vid = v.get("vid")
             if not vid or vid in seen: continue
-            c = find_latest_comment(vid, comment_map)
-            if c:
+            c_list = get_comments_for_variant(vid, comment_map)
+            if c_list:
                 seen.add(vid)
-                comments.append({
-                    "gene": c.get("gene") or v.get("gene") or "",
-                    "hgvsc": c.get("hgvsc", ""),
-                    "comment": c.get("comment"),
-                    "date": c.get("date"),
-                    "vid": vid
-                })
+                for c in c_list:
+                    comments.append({
+                        "gene": c.get("gene") or v.get("gene") or "",
+                        "hgvsc": c.get("hgvsc", ""),
+                        "comment": c.get("comment"),
+                        "date": c.get("date"),
+                        "vid": vid
+                    })
         return comments
 
     all_comments = collect_comments(all_variants)
@@ -502,7 +569,10 @@ def main():
     parser = argparse.ArgumentParser(description="Extract and filter NGS variants for report.")
     parser.add_argument("input_json", help="Path to input VEP JSON(.gz) file.")
     default_ref_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources")
+    default_filter_config = os.path.join(default_ref_dir, "sciobase_filters.json")
     parser.add_argument("--ref-dir", default=default_ref_dir, help="Directory containing variant_comments.csv")
+    parser.add_argument("--filter-config", default=default_filter_config, help="Path to the sciobase filter config JSON.")
+    parser.add_argument("--vcs", help="Override the VCS profile name from the filter config.")
     parser.add_argument("-o", "--output", help="Path to output processed JSON.")
     args = parser.parse_args()
 
@@ -510,8 +580,15 @@ def main():
         print(f"Error: Input file {args.input_json} not found.")
         sys.exit(1)
 
+    input_data = load_json_file(args.input_json)
+    vcs_label = args.vcs or detect_vcs_label(input_data)
+    selected_vcs, filter_profile = load_filter_config(args.filter_config, vcs_label)
+    apply_filter_profile(filter_profile)
+
+    print(f"Using filter profile: {selected_vcs}")
+
     comment_map = load_variant_comments(args.ref_dir)
-    results = process_annotation_file(args.input_json, comment_map)
+    results = process_annotation_file(args.input_json, comment_map, filter_profile)
 
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as f:

@@ -11,7 +11,7 @@ from xml.sax.saxutils import escape
 
 from reportlab.platypus import (Paragraph, Spacer, Image, Table,
                                 TableStyle, BaseDocTemplate, Frame, PageTemplate,
-                                HRFlowable, KeepTogether)
+                                HRFlowable, KeepTogether, PageBreak)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors, utils
@@ -320,25 +320,21 @@ def generate_focal_cnv_section(directory, doc_width, styles):
     focal_plots = sorted(glob.glob(os.path.join(cnvdir, "*_chr*.png")), key=chrom_sort_key)
     if focal_plots:
         story.append(Paragraph("Focal copy number profiles", styles['SubHeader'])) 
-        table_data = []
         row = []
-        # Arrange images 3 per row to save space
+        # Arrange images in rows of three and let ReportLab flow the rows naturally.
         for p in focal_plots:
             img = get_proportional_image(p, doc_width * 0.32)
             if img:
                 row.append(img)
             if len(row) == 3:
-                table_data.append(row)
+                focal_table = Table([row], colWidths=[doc_width / 3.0] * 3, style=[('VALIGN', (0, 0), (-1, -1), 'TOP')])
+                story.append(focal_table)
                 row = []
         if row:
-            # Pad the last row with empty strings
             while len(row) < 3:
                 row.append("")
-            table_data.append(row)
-            
-        if table_data:
-            focal_table = Table(table_data, colWidths=[doc_width / 3.0] * 3, style=[('VALIGN', (0, 0), (-1, -1), 'TOP')])
-            story.append(focal_table) 
+            focal_table = Table([row], colWidths=[doc_width / 3.0] * 3, style=[('VALIGN', (0, 0), (-1, -1), 'TOP')])
+            story.append(focal_table)
 
     if story:
         story[-1].spaceAfter = SECTION_SPACING
@@ -529,23 +525,23 @@ def generate_qc_variants_section(doc_width, styles, variants_data):
     """Generates the QC variants subsection for the Supplementary section."""
     story = []
     variants = variants_data.get("variants", [])
-    qc_vars = [v for v in variants if not v.get("is_main_candidate")]
+    all_variants = variants
     
-    if qc_vars:
+    if all_variants:
         story.append(Paragraph("All detected coding variants", styles['SubHeader']))
-        table = create_variant_table(qc_vars, styles, doc_width, is_qc=True)
+        table = create_variant_table(all_variants, styles, doc_width, is_qc=True)
         if table:
             story.append(table)
 
-        qc_vids = {v.get("vid") for v in qc_vars if v.get("vid")}
+        all_vids = {v.get("vid") for v in all_variants if v.get("vid")}
 
-        # Add Unified Comments to QC variants
+        # Add Unified Comments to all variants
         comments = variants_data.get("comments", [])
         if comments:
             story.append(Spacer(1, 4))
             for c in comments:
-                # Skip the comment if its variant isn't in the QC list
-                if c.get("vid") not in qc_vids:
+                # Skip the comment if its variant isn't in the variant list
+                if c.get("vid") not in all_vids:
                     continue
                     
                 c_text = f"<b>{c['gene']} {c['hgvsc']}:</b> {c['comment']}"
@@ -655,6 +651,7 @@ def main():
         supplementary_story.extend(focal_story)
 
     if supplementary_story:
+        story.append(PageBreak())
         story.extend(create_section_header("Supplement", styles))
         story.extend(supplementary_story)
 

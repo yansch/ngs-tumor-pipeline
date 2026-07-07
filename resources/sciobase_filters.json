@@ -1,0 +1,77 @@
+{
+  "default_vcs": "sciobase",
+  "profiles": {
+    "sciobase": {
+      "gene_list": [
+        "BRAF",
+        "BCOR",
+        "CD79B",
+        "CDKN2A",
+        "CDKN2B",
+        "CTNNB1",
+        "DICER1",
+        "EGFR",
+        "ERBB2",
+        "FGFR1",
+        "GNA11",
+        "GNAQ",
+        "GNAS",
+        "H3-3A",
+        "H3-3B",
+        "H3C1",
+        "H3C2",
+        "H3C3",
+        "IDH1",
+        "IDH2",
+        "KIT",
+        "KRAS",
+        "MET",
+        "MYD88",
+        "NRAS",
+        "PDGFRA",
+        "PDGFRB",
+        "PIK3CA",
+        "PTEN",
+        "RET",
+        "SMARCB1",
+        "TERT",
+        "TP53"
+      ],
+      "coding_csq": [
+        "missense_variant",
+        "nonsense_variant",
+        "stop_gained",
+        "stop_lost",
+        "start_lost",
+        "frameshift_variant",
+        "inframe_insertion",
+        "inframe_deletion",
+        "protein_altering_variant",
+        "incomplete_terminal_codon_variant"
+      ],
+      "splice_csq": [
+        "splice_acceptor_variant",
+        "splice_donor_variant",
+        "splice_region_variant"
+      ],
+      "always_excluded_csq": [
+        "synonymous_variant",
+        "mature_miRNA_variant",
+        "NMD_transcript_variant"
+      ],
+      "min_depth": 10,
+      "max_popmax": 0.01,
+      "main_min_vaf": 0.05,
+      "tert_hotspots": {
+        "5-1295228-G-A": {
+          "label": "C228T Promotor-Mutation",
+          "classification": "pathogen"
+        },
+        "5-1295250-G-A": {
+          "label": "C250T Promotor-Mutation",
+          "classification": "pathogen"
+        }
+      }
+    }
+  }
+}
