@@ -161,9 +161,9 @@ def map_classification(val):
     if not val:
         return ""
     s = val.lower().strip()
-    if s in ["oncogenic", "likely oncogenic"]:
+    if s == "oncogenic":
         return "pathogen"
-    if s == "predicted oncogenic":
+    if s in ["likely oncogenic", "predicted oncogenic"]:
         return "wahrscheinlich pathogen"
     return ""
 

@@ -43,9 +43,6 @@ estimate_remaining_time() {
 
     combined_bytes=$(( $(wc -c < "$r1") + $(wc -c < "$r2") ))
     total_seconds=$(( combined_bytes * PIPELINE_TIME_FACTOR / 1073741824 ))
-    if (( total_seconds < 1800 )); then
-        total_seconds=1800
-    fi
 
     elapsed_seconds=$(( $(date +%s) - $(date -d "$start_time" +%s) ))
     remaining_seconds=$(( total_seconds - elapsed_seconds ))

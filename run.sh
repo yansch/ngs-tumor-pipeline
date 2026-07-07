@@ -8,6 +8,7 @@ source "$SCRIPT_DIR/config/common.sh"
 
 # Defaults
 DRY_RUN=false
+KEEP_EXISTING=false
 INPUT_DIR_ARG=""
 MAIL_USER=""
 
@@ -16,6 +17,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --keep-existing)
+            KEEP_EXISTING=true
             shift
             ;;
         --mail-user=*)
@@ -56,9 +61,19 @@ echo "📊 Results path:   $RESULTS_BASE"
 if [ -n "$MAIL_USER" ]; then
     echo "📧 Slurm email:    $MAIL_USER"
 fi
+if [ "$KEEP_EXISTING" = true ]; then
+    echo "🧹 Cleanup:        preserving existing tmp/output"
+else
+    echo "🧹 Cleanup:        clearing tmp/output before run"
+fi
 echo "-------------------------------------------------------"
 
 mkdir -p "$RESULTS_BASE" "$SCRATCH_DIR"
+
+if [ "$DRY_RUN" = false ] && [ "$KEEP_EXISTING" = false ]; then
+    rm -rf "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
+    mkdir -p "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
+fi
 
 submitted=0
 

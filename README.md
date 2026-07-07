@@ -54,6 +54,13 @@ To see what the pipeline *would* do without actually starting any jobs, use:
 bash run.sh --dry-run
 ```
 
+**Optional: Preserve Existing Outputs**
+By default, `run.sh` clears the pipeline tmp and output directories before starting a new run. To keep previous results, pass:
+
+```bash
+bash run.sh --keep-existing
+```
+
 ---
 
 ## 📂 Project Structure & Paths
