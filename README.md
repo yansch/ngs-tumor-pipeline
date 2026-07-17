@@ -36,7 +36,7 @@ The setup script created an input folder for you in your scratch directory. Move
 
 ```bash
 # Example for Palma
-cp /path/to/your/files/*.fastq.gz /scratch/tmp/$USER/ngs-tumor-pipeline/input/fastq/
+cp /path/to/your/files/*.fastq.gz /scratch/tmp/$USER/ngs-tumor-pipeline/input/
 ```
 
 ### 2. Launch the Analysis
