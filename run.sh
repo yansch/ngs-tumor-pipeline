@@ -2,19 +2,46 @@
 # run.sh - Orchestrator for NGS Tumor Pipeline
 set -eo pipefail
 
-# Source configuration
+# Locate project
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/config/common.sh"
 
 # Defaults
 DRY_RUN=false
 KEEP_EXISTING=false
 INPUT_DIR_ARG=""
 MAIL_USER=""
+OVERRIDES_FILE=""
+PRESERVE_VARS=()
+
+print_usage() {
+        cat <<EOF
+Usage: bash run.sh [options] [input_dir]
+
+Options:
+    --dry-run                      Scan and print detected cases only.
+    --keep-existing                Do not clear tmp/output before run.
+    --mail-user EMAIL              Send Slurm mail notifications to EMAIL.
+    --mail-user=EMAIL              Same as above.
+    --set KEY=VALUE                Override any scalar config variable (repeatable).
+    --overrides-file PATH          Source a Bash overrides file after host config.
+    --help                         Show this help.
+
+Precedence (lowest -> highest):
+    host config defaults < .env < --overrides-file < --set
+
+Notes:
+    - --set is intended for scalar variables (e.g. PIPELINE_THREADS=32).
+    - For arrays (e.g. FASTP_MODULES), use --overrides-file.
+EOF
+}
 
 # --- 1. Argument Parsing ---
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --help|-h)
+            print_usage
+            exit 0
+            ;;
         --dry-run)
             DRY_RUN=true
             shift
@@ -22,6 +49,56 @@ while [[ $# -gt 0 ]]; do
         --keep-existing)
             KEEP_EXISTING=true
             shift
+            ;;
+        --overrides-file=*)
+            OVERRIDES_FILE="${1#*=}"
+            shift
+            ;;
+        --overrides-file)
+            if [[ $# -gt 1 && "$2" != --* ]]; then
+                OVERRIDES_FILE="$2"
+                shift 2
+            else
+                echo "❌ Error: --overrides-file requires a file path argument."
+                exit 1
+            fi
+            ;;
+        --set=*)
+            assignment="${1#*=}"
+            if [[ "$assignment" != *=* ]]; then
+                echo "❌ Error: --set requires KEY=VALUE."
+                exit 1
+            fi
+            key="${assignment%%=*}"
+            value="${assignment#*=}"
+            if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                echo "❌ Error: Invalid variable name in --set: $key"
+                exit 1
+            fi
+            export "$key=$value"
+            PRESERVE_VARS+=("$key")
+            shift
+            ;;
+        --set)
+            if [[ $# -gt 1 && "$2" != --* ]]; then
+                assignment="$2"
+                if [[ "$assignment" != *=* ]]; then
+                    echo "❌ Error: --set requires KEY=VALUE."
+                    exit 1
+                fi
+                key="${assignment%%=*}"
+                value="${assignment#*=}"
+                if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                    echo "❌ Error: Invalid variable name in --set: $key"
+                    exit 1
+                fi
+                export "$key=$value"
+                PRESERVE_VARS+=("$key")
+                shift 2
+            else
+                echo "❌ Error: --set requires KEY=VALUE."
+                exit 1
+            fi
             ;;
         --mail-user=*)
             MAIL_USER="${1#*=}"
@@ -44,6 +121,31 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Pass override metadata into all scripts that source config/common.sh.
+if [[ -n "$OVERRIDES_FILE" ]]; then
+    if [[ ! -f "$OVERRIDES_FILE" ]]; then
+        echo "❌ Error: overrides file not found: $OVERRIDES_FILE"
+        exit 1
+    fi
+    export NGS_CONFIG_OVERRIDES_FILE="$OVERRIDES_FILE"
+fi
+
+if [[ ${#PRESERVE_VARS[@]} -gt 0 ]]; then
+    # De-duplicate while preserving first-seen order.
+    declare -A seen_vars=()
+    unique_vars=()
+    for var_name in "${PRESERVE_VARS[@]}"; do
+        if [[ -z "${seen_vars[$var_name]+x}" ]]; then
+            seen_vars["$var_name"]=1
+            unique_vars+=("$var_name")
+        fi
+    done
+    export NGS_CONFIG_PRESERVE_VARS="$(IFS=,; echo "${unique_vars[*]}")"
+fi
+
+# Source configuration after parsing args so --set / --overrides-file can be applied.
+source "$SCRIPT_DIR/config/common.sh"
 
 INPUT_DIR="${INPUT_DIR_ARG:-$INPUT_DIR}"
 
@@ -125,6 +227,7 @@ while IFS= read -r R1; do
             
             SBATCH_ARGS=(
                 --job-name="NGS_$CASE_LABEL"
+                --export=ALL
                 --cpus-per-task="$PIPELINE_THREADS"
                 --mem="$PIPELINE_MEM"
                 --time="$duration"

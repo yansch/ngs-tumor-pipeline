@@ -61,6 +61,28 @@ By default, `run.sh` clears the pipeline tmp and output directories before start
 bash run.sh --keep-existing
 ```
 
+**Optional: Override Configuration Values**
+You can override host config values at runtime:
+
+```bash
+# Scalar overrides from CLI (repeat --set as needed)
+bash run.sh --set PIPELINE_THREADS=32 --set RESULTS_BASE=/scratch/tmp/$USER/ngs-output
+```
+
+```bash
+# File-based overrides (recommended for arrays/modules)
+bash run.sh --overrides-file /path/to/my-overrides.sh
+```
+
+Override precedence is:
+
+1. Host defaults (`config/omen.sh` or `config/palma.sh`)
+2. `.env` (if present in project root)
+3. `--overrides-file`
+4. `--set`
+
+Use `bash run.sh --help` to see all options.
+
 ---
 
 ## 📂 Project Structure & Paths
