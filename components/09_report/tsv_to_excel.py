@@ -19,7 +19,7 @@ def main():
     # Load highlight genes
     fusion_genes = set()
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    fusion_genes_path = os.path.abspath(os.path.join(script_dir, "..", "resources", "fusion_genes.csv"))
+    fusion_genes_path = os.path.abspath(os.path.join(script_dir, "..", "..", "resources", "fusion_genes.csv"))
     if os.path.exists(fusion_genes_path):
         try:
             df_fg = pd.read_csv(fusion_genes_path)

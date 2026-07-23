@@ -568,7 +568,7 @@ def write_variants_to_xlsx(results, xlsx_path):
 def main():
     parser = argparse.ArgumentParser(description="Extract and filter NGS variants for report.")
     parser.add_argument("input_json", help="Path to input VEP JSON(.gz) file.")
-    default_ref_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources")
+    default_ref_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "resources")
     default_filter_config = os.path.join(default_ref_dir, "sciobase_filters.json")
     parser.add_argument("--ref-dir", default=default_ref_dir, help="Directory containing variant_comments.csv")
     parser.add_argument("--filter-config", default=default_filter_config, help="Path to the sciobase filter config JSON.")

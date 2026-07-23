@@ -101,15 +101,16 @@ while IFS= read -r R1; do
             echo " 📤 [PALMA] Calculating dynamic runtime limit for: $CASE_LABEL"
             R1_size=$(wc -c < "$R1")
             R2_size=$(wc -c < "$R2")
-            x=767  # Time needed per GB in seconds, based on NovaseqX data by YA
 
             combined_bytes=$(( R1_size + R2_size ))
             combined_size_gb=$(printf "%.2f" "$(echo "scale=2; $combined_bytes / 1073741824" | bc)")
 
-            # Ensure a minimum time limit of 30 minutes (1800 seconds)
-            calculated_time_needed=$(( combined_bytes * x / 1073741824 ))
-            if (( calculated_time_needed < 1800 )); then
-                calculated_time_needed=1800
+            if (( combined_bytes < 4 * 1073741824 )); then
+                calculated_time_needed=$(( 2 * 3600 ))
+            elif (( combined_bytes <= 8 * 1073741824 )); then
+                calculated_time_needed=$(( 4 * 3600 ))
+            else
+                calculated_time_needed=$(( 8 * 3600 ))
             fi
 
             hours=$(( calculated_time_needed / 3600 ))

@@ -612,7 +612,7 @@ def main():
 
     # Load fusion genes for highlighting
     fusion_genes = []
-    fusion_genes_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "fusion_genes.csv")
+    fusion_genes_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "resources", "fusion_genes.csv")
     if os.path.exists(fusion_genes_path):
         try:
             df_fg = pd.read_csv(fusion_genes_path)
