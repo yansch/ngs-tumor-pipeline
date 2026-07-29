@@ -57,18 +57,13 @@ ACTIVE_JOBS=$(squeue -u "$USER" -o "%i|%j|%T|%M|%S|%R" --noheader | grep "NGS_" 
 if [ -z "$ACTIVE_JOBS" ]; then
     echo "    No active NGS jobs found in the queue."
 else
-    printf "    %-10s %-20s %-10s %-10s %-10s %-s %-s\n" "JOBID" "CASE" "STATE" "TIME" "REMAINING" "NODE/REASON" "OUT LOG"
+    printf "    %-10s %-20s %-10s %-10s %-10s %-s\n" "JOBID" "CASE" "STATE" "TIME" "REMAINING" "NODE/REASON"
     while IFS='|' read -r id name state time start extra; do
         remaining_time="N/A"
-        out_log="N/A"
-        case_label="${name#NGS_}"
-        if [ -n "$id" ] && [ -n "$case_label" ]; then
-            out_log="tail -f $RESULTS_BASE/$case_label/log/${id}_${case_label}_*.out"
-        fi
         if [[ "$state" == "RUNNING" && "$start" != "N/A" && "$start" != "Unknown" ]]; then
             remaining_time=$(estimate_remaining_time "$name" "$start")
         fi
-        printf "    %-10s %-20s %-10s %-10s %-10s %-s %-s\n" "$id" "$name" "$state" "$time" "$remaining_time" "$extra" "$out_log"
+        printf "    %-10s %-20s %-10s %-10s %-10s %-s\n" "$id" "$name" "$state" "$time" "$remaining_time" "$extra"
     done <<< "$ACTIVE_JOBS"
 fi
 
@@ -99,20 +94,36 @@ echo ""
 
 # --- 3. Log Inspection Commands ---
 echo "📄 LOG ACCESS"
-# Get the 3 most recent sample log files to show examples
-RECENT_LOGS=$(find "$RESULTS_BASE" -path "*/log/*.out" -type f 2>/dev/null | sort -r | head -n 3 || true)
 
-if [ -z "$RECENT_LOGS" ]; then
-    echo "    No log files found under $RESULTS_BASE/*/log"
+CASES=()
+if [ -d "$RESULTS_BASE" ]; then
+    while IFS= read -r dir; do
+        [ -n "$dir" ] && CASES+=("$(basename "$(dirname "$dir")")")
+    done < <(find "$RESULTS_BASE" -mindepth 2 -maxdepth 2 -type d -name "log" 2>/dev/null || true)
+fi
+
+if [ -n "$ACTIVE_JOBS" ]; then
+    while IFS='|' read -r id name state time start extra; do
+        case_label="${name#NGS_}"
+        [ -n "$case_label" ] && CASES+=("$case_label")
+    done <<< "$ACTIVE_JOBS"
+fi
+
+UNIQUE_CASES=$(printf "%s\n" "${CASES[@]}" 2>/dev/null | grep -v '^$' | sort -u || true)
+
+if [ -z "$UNIQUE_CASES" ]; then
+    echo "    No log directories found under $RESULTS_BASE"
 else
-    echo "    To watch a running job:"
-    echo "    tail -f $RESULTS_BASE/<CASE>/log/[JOBID]_*.out"
-    echo "    tail -f $RESULTS_BASE/<CASE>/log/[JOBID]_*.err"
+    printf "    %-20s %-s\n" "CASE ID" "RELATIVE LOG PATH"
+    while read -r case_id; do
+        log_dir="$RESULTS_BASE/$case_id/log"
+        rel_path=$(realpath -m --relative-to=. "$log_dir" 2>/dev/null || echo "$log_dir")
+        printf "    %-20s %-s\n" "$case_id" "$rel_path"
+    done <<< "$UNIQUE_CASES"
+
     echo ""
-    echo "    Most recent log files:"
-    for log in $RECENT_LOGS; do
-        echo "    📂 $(basename "$log")"
-    done
+    echo "    To view a desired log using tail -f:"
+    echo "    tail -f <RELATIVE_LOG_PATH>/[JOBID]_*.out"
 fi
 
 echo "-------------------------------------------------------"
