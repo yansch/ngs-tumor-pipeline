@@ -11,7 +11,7 @@ if [ "$PIPELINE_HOST" != "palma" ]; then
     exit 1
 fi
 
-INTERVAL=5
+INTERVAL=10
 ONCE=false
 
 while [[ $# -gt 0 ]]; do
@@ -66,7 +66,7 @@ estimate_remaining_time() {
 }
 
 render_status() {
-    [ "$ONCE" = false ] && clear
+    [ "$ONCE" = false ] && printf "\033[H\033[2J"
 
     echo "-------------------------------------------------------"
     echo "🔍 NGS Pipeline Status for user: $USER"

@@ -8,8 +8,7 @@
 # ---------------------------------------------------------------------------
 # 0. Bootstrap: locate project root and load config
 # ---------------------------------------------------------------------------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PROJECT_DIR="$SCRIPT_DIR"
+export PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 source "$PROJECT_DIR/config/common.sh"
 source "$PROJECT_DIR/lib/common_functions.sh"
