@@ -65,35 +65,108 @@ echo "   Host: $(hostname)   Threads: $THREADS"
 echo "═══════════════════════════════════════════════════════════════════════"
 
 # ---------------------------------------------------------------------------
-# 3. Bioinformatics steps (FASTQ → BAMs)
-#    Each step handles its own module loading.
+# 3. Step 01: Preprocessing (FASTQ trimming)
 # ---------------------------------------------------------------------------
 source "$PROJECT_DIR/components/01_fastp/run_fastp.sh"
-source "$PROJECT_DIR/components/02_star/run_star.sh"
-source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
-source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
 
-# ---------------------------------------------------------------------------
-# 4. Switch to analysis environment (Python + R)
-#    This is a deliberate environment boundary between alignment and analysis.
-# ---------------------------------------------------------------------------
-purge_modules
-load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
-load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
-load_ngs_python_env
-unset PYTHONPATH
+if [ "$PIPELINE_HOST" = "palma" ]; then
+    echo ""
+    echo "⚡ Running downstream steps in parallel.."
 
-echo ""
-echo "─── Analysis environment ready ─────────────────────────────────────────"
+    # Branch A: STAR alignment -> Arriba fusion detection
+    (
+        set -eo pipefail
+        source "$PROJECT_DIR/components/02_star/run_star.sh"
+        source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
+    ) &
+    PID_BRANCH_A=$!
 
-# ---------------------------------------------------------------------------
-# 5. Analysis steps (BAMs → results)
-# ---------------------------------------------------------------------------
-source "$PROJECT_DIR/components/05_cnvkit/run_cnvkit.sh"
-source "$PROJECT_DIR/components/06_cnv_plots/run_cnv_plots.sh"
-source "$PROJECT_DIR/components/07_coverage/run_coverage.sh"
-source "$PROJECT_DIR/components/08_variants/run_variants.sh"
-source "$PROJECT_DIR/components/09_report/run_report.sh"
+    # Branch B: BWA-MEM2 alignment -> CNVkit -> CNV plots & Coverage
+    (
+        set -eo pipefail
+        source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
+
+        # Switch to analysis env for CNV/coverage steps
+        purge_modules
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+        load_ngs_python_env
+        unset PYTHONPATH
+
+        source "$PROJECT_DIR/components/05_cnvkit/run_cnvkit.sh"
+
+        ( set -eo pipefail; source "$PROJECT_DIR/components/06_cnv_plots/run_cnv_plots.sh" ) &
+        PID_PLOTS=$!
+
+        ( set -eo pipefail; source "$PROJECT_DIR/components/07_coverage/run_coverage.sh" ) &
+        PID_COV=$!
+
+        wait $PID_PLOTS $PID_COV
+    ) &
+    PID_BRANCH_B=$!
+
+    # Branch C: Variant filtering & OncoKB annotation
+    (
+        set -eo pipefail
+        purge_modules
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+        load_ngs_python_env
+        unset PYTHONPATH
+
+        source "$PROJECT_DIR/components/08_variants/run_variants.sh"
+        # Save exported VAR_ARG to state file in TMP_DIR
+        echo "export VAR_ARG=\"${VAR_ARG:-}\"" > "$TMP_DIR/variants_env.sh"
+    ) &
+    PID_BRANCH_C=$!
+
+    # Wait for all parallel branches to finish
+    wait $PID_BRANCH_A || { echo "❌ Branch (STAR + Arriba) failed." >&2; exit 1; }
+    wait $PID_BRANCH_B || { echo "❌ Branch (BWA + CNV + Coverage) failed." >&2; exit 1; }
+    wait $PID_BRANCH_C || { echo "❌ Variant branch failed." >&2; exit 1; }
+
+    # Activate analysis environment for final report
+    purge_modules
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+    load_ngs_python_env
+    unset PYTHONPATH
+
+    if [ -f "$TMP_DIR/variants_env.sh" ]; then
+        source "$TMP_DIR/variants_env.sh"
+    fi
+
+    source "$PROJECT_DIR/components/09_report/run_report.sh"
+
+else
+    echo ""
+    echo "─── Sequential mode (Omen / local) ───────────────────────────────────"
+    source "$PROJECT_DIR/components/02_star/run_star.sh"
+    source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
+    source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
+
+    # ---------------------------------------------------------------------------
+    # 4. Switch to analysis environment (Python + R)
+    #    This is a deliberate environment boundary between alignment and analysis.
+    # ---------------------------------------------------------------------------
+    purge_modules
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+    load_ngs_python_env
+    unset PYTHONPATH
+
+    echo ""
+    echo "─── Analysis environment ready ─────────────────────────────────────────"
+
+    # ---------------------------------------------------------------------------
+    # 5. Analysis steps (BAMs → results)
+    # ---------------------------------------------------------------------------
+    source "$PROJECT_DIR/components/05_cnvkit/run_cnvkit.sh"
+    source "$PROJECT_DIR/components/06_cnv_plots/run_cnv_plots.sh"
+    source "$PROJECT_DIR/components/07_coverage/run_coverage.sh"
+    source "$PROJECT_DIR/components/08_variants/run_variants.sh"
+    source "$PROJECT_DIR/components/09_report/run_report.sh"
+fi
 
 # ---------------------------------------------------------------------------
 # 6. Summary
