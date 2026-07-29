@@ -156,11 +156,17 @@ render_status() {
     echo "-------------------------------------------------------"
 }
 
-trap 'exit 0' INT TERM
+cleanup() {
+    [ "$ONCE" = false ] && printf "\033[?1049l"
+    exit 0
+}
+
+trap cleanup INT TERM EXIT
 
 if [ "$ONCE" = true ]; then
     render_status
 else
+    printf "\033[?1049h"
     while true; do
         render_status
         sleep "$INTERVAL"
