@@ -11,7 +11,7 @@ from xml.sax.saxutils import escape
 
 from reportlab.platypus import (Paragraph, Spacer, Image, Table,
                                 TableStyle, BaseDocTemplate, Frame, PageTemplate,
-                                HRFlowable, KeepTogether, PageBreak)
+                                HRFlowable, KeepTogether)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors, utils
@@ -320,21 +320,25 @@ def generate_focal_cnv_section(directory, doc_width, styles):
     focal_plots = sorted(glob.glob(os.path.join(cnvdir, "*_chr*.png")), key=chrom_sort_key)
     if focal_plots:
         story.append(Paragraph("Focal copy number profiles", styles['SubHeader'])) 
+        table_data = []
         row = []
-        # Arrange images in rows of three and let ReportLab flow the rows naturally.
+        # Arrange images 3 per row to save space
         for p in focal_plots:
             img = get_proportional_image(p, doc_width * 0.32)
             if img:
                 row.append(img)
             if len(row) == 3:
-                focal_table = Table([row], colWidths=[doc_width / 3.0] * 3, style=[('VALIGN', (0, 0), (-1, -1), 'TOP')])
-                story.append(focal_table)
+                table_data.append(row)
                 row = []
         if row:
+            # Pad the last row with empty strings
             while len(row) < 3:
                 row.append("")
-            focal_table = Table([row], colWidths=[doc_width / 3.0] * 3, style=[('VALIGN', (0, 0), (-1, -1), 'TOP')])
-            story.append(focal_table)
+            table_data.append(row)
+            
+        if table_data:
+            focal_table = Table(table_data, colWidths=[doc_width / 3.0] * 3, style=[('VALIGN', (0, 0), (-1, -1), 'TOP')])
+            story.append(focal_table) 
 
     if story:
         story[-1].spaceAfter = SECTION_SPACING
@@ -419,6 +423,112 @@ def generate_fusions_section(directory, doc_width, styles, fusion_genes=None):
     if story:
         story[-1].spaceAfter = SECTION_SPACING
     return story
+
+def generate_metagenomics_section(directory, doc_width, styles):
+    # (Metagenomics section remains unchanged)
+    metagenomics_table_style = TableStyle([
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOX', (0, 0), (-1, -1), 0.5, BLACK),
+    ])
+    data_flowables = []
+
+    target_width = doc_width * TABLE_WIDTH_FACTOR
+
+
+    vf = get_file_path(os.path.join(directory, 'arriba'), "*virus_expression.tsv")
+    if vf:
+        try:
+            df = pd.read_csv(vf, sep='\t')
+            if not df.empty:
+                df = df[['VIRUS', 'COVERED_GENOME_FRACTION', 'HIGH_QUALITY_ALIGNMENTS']]
+                df.columns = ["Virus", "Genome Fraction", "High Quality Alignments"]
+                df['Virus'] = df['Virus'].str.replace('_', ' ')
+
+
+
+
+
+                proportions = [0.45, 0.25, 0.30]
+                col_widths = [p * target_width for p in proportions]
+                data_flowables.append(create_styled_table(
+                    df, styles, metagenomics_table_style, col_widths=col_widths, hAlign='CENTER'
+                ))
+        except Exception as e:
+            print(f"Warning: Could not process virus expression file '{vf}': {e}")
+
+    kf = get_file_path(os.path.join(directory, 'kraken2'), "*kraken2_eupathdb_report.txt")
+    if kf:
+        try:
+            kraken_content = []
+            kraken_threshold = 3
+
+            df_full = pd.read_csv(kf, sep='\t', comment='#')
+            df_species = df_full[df_full[5].str.startswith('S')].copy()
+
+
+            
+            df_filtered, removed_count = filter_kraken_results(df_species, kraken_threshold)
+
+
+            if not df_filtered.empty:
+                df_sorted = df_filtered.sort_values('cov', ascending=False)
+                out = pd.DataFrame({
+                    'Name': df_sorted[7].str.replace('_', ' '),
+                    'Reads': df_sorted[1],
+                    'Coverage': (df_sorted['cov'] * 100).round(2), #needs additional compute from the classified fastqs, alignment with bowtie, sorting and coverage calculation with samtools
+                    'Percent': df_sorted[1].round(2)
+                })
+                proportions = [0.55, 0.15, 0.15, 0.15]
+                col_widths = [p * target_width for p in proportions]
+                kraken_content.append(create_styled_table(
+                    out, styles, metagenomics_table_style, col_widths=col_widths, hAlign='CENTER'
+                ))
+
+            if removed_count > 0:
+                p = Paragraph(f"Filtered out {removed_count} results with number of reads < {kraken_threshold}", styles['Normal'])
+                p.spaceBefore = 0.1 * inch
+                kraken_content.append(p)
+
+
+            if kraken_content:
+                data_flowables.extend(kraken_content)
+
+
+
+
+        except Exception as e:
+            print(f"Warning: Could not process kraken file '{kf}': {e}")
+
+    if not data_flowables:
+        print("Info: No metagenomics data found. Skipping section.")
+        return []
+
+    story = create_section_header("Metagenomics", styles)
+    story.extend(data_flowables)
+
+
+
+
+
+
+
+
+    if story:
+        story[-1].spaceAfter = SECTION_SPACING
+        
+    return story
+
+
+
+
+
+
+
+
+
+
+
 
 
 def create_variant_table(variants, styles, doc_width, is_qc=False):
@@ -525,23 +635,23 @@ def generate_qc_variants_section(doc_width, styles, variants_data):
     """Generates the QC variants subsection for the Supplementary section."""
     story = []
     variants = variants_data.get("variants", [])
-    all_variants = variants
+    qc_vars = [v for v in variants if not v.get("is_main_candidate")]
     
-    if all_variants:
+    if qc_vars:
         story.append(Paragraph("All detected coding variants", styles['SubHeader']))
-        table = create_variant_table(all_variants, styles, doc_width, is_qc=True)
+        table = create_variant_table(qc_vars, styles, doc_width, is_qc=True)
         if table:
             story.append(table)
 
-        all_vids = {v.get("vid") for v in all_variants if v.get("vid")}
+        qc_vids = {v.get("vid") for v in qc_vars if v.get("vid")}
 
-        # Add Unified Comments to all variants
+        # Add Unified Comments to QC variants
         comments = variants_data.get("comments", [])
         if comments:
             story.append(Spacer(1, 4))
             for c in comments:
-                # Skip the comment if its variant isn't in the variant list
-                if c.get("vid") not in all_vids:
+                # Skip the comment if its variant isn't in the QC list
+                if c.get("vid") not in qc_vids:
                     continue
                     
                 c_text = f"<b>{c['gene']} {c['hgvsc']}:</b> {c['comment']}"
@@ -637,6 +747,7 @@ def main():
     
     story.extend(generate_cnv_section(base_dir, doc.width, styles, is_metagenomics=is_metagenomics_sample))
     story.extend(generate_fusions_section(base_dir, doc.width, styles, fusion_genes=fusion_genes))
+    story.extend(generate_metagenomics_section(base_dir, doc.width, styles))
 
     # Add Supplementary section at the end
     supplementary_story = []
@@ -651,7 +762,6 @@ def main():
         supplementary_story.extend(focal_story)
 
     if supplementary_story:
-        story.append(PageBreak())
         story.extend(create_section_header("Supplement", styles))
         story.extend(supplementary_story)
 
