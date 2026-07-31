@@ -12,7 +12,7 @@ DRY_RUN=false
 KEEP_EXISTING=false
 TIMELOG=false
 INPUT_DIR_ARG=""
-MAIL_USER="yannisluca.adrian@ukmuenster.de"
+MAIL_USER=""
 
 # --- 1. Argument Parsing ---
 while [[ $# -gt 0 ]]; do
@@ -81,7 +81,7 @@ if [ "$DRY_RUN" = false ] && [ "$KEEP_EXISTING" = false ]; then
     mkdir -p "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
 fi
 
-wartezeit=10 #in minuten (wartezeit zwischen den prüfungen, ob der Transfer der Dateien noch läuft oder abgeschlossen ist)
+wartezeit=10 #in minuten (wartezeit zwischen den prï¿½fungen, ob der Transfer der Dateien noch lï¿½uft oder abgeschlossen ist)
 get_size() {
   # total bytes used by files in directory
   du -sb ~+/input 2>/dev/null | awk '{print $1}'
