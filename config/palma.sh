@@ -24,6 +24,7 @@ export ANALYSIS_TOOLCHAIN_MODULE="palma/2024a"
 PYTHON_MODULES=("GCCcore/13.3.0" "Python/3.12.3")
 ARRIBA_VISUALIZATION_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2")
 R_BIOCONDUCTOR_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2")
+KRAKEN2_MODULES=("foss/2024a" "Kraken2/2.1.4" "Bowtie2/2.5.4")
 
 # --- Reference Base Paths ---
 export REF_BASE="/scratch/tmp/thomachr/references"
@@ -56,14 +57,20 @@ export PANEL_BED="$PROJECT_DIR/resources/panel_v4.1_hg19.csv"
 # --- Resource Allocation ---
 export PIPELINE_THREADS=24
 export PIPELINE_MEM="64G"
-export PIPELINE_TIME="00:30:00"
+export PIPELINE_TIME="02:00:00"
 export PIPELINE_PARTITION="requeue"
-export PIPELINE_TIME_FACTOR=767
+export PIPELINE_TIME_FACTOR=1896
 export SORT_MEM_BASE=20000
 
 # --- Runtime & Output Paths ---
-export SCRATCH_DIR="/scratch/tmp/$USER/ngs-tumor-pipeline"
+export SCRATCH_DIR="/scratch/tmp/$USER/1testing/kraken2"
 export INPUT_DIR="$SCRATCH_DIR/input"
 export VARIANTS_SEARCH_DIR="$SCRATCH_DIR/input"
 export RESULTS_BASE="${RESULTS_BASE:-$SCRATCH_DIR/output}"
 export VENV_PATH="$SCRATCH_DIR/env"
+
+# Kraken2
+export KRAKEN_REF="/scratch/tmp/adriany/0references/kraken2/databases"
+export EUPATHDB="$KRAKEN_REF/EUPathDB46"
+export PPFDB="$KRAKEN_REF/plusPF"
+export BOWTIE_INDEX="/scratch/tmp/thomachr/metagenomics/bowtie_index/GRCh38_noalt_as"
