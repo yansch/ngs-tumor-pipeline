@@ -61,6 +61,13 @@ By default, `run.sh` clears the pipeline tmp and output directories before start
 bash run.sh --keep-existing
 ```
 
+**Optional: Timelogging**
+By using this command, each step will be time-logged. This is useful for delevopment (for example for calculating the factor thats used for calculating the estimated duration):
+
+```bash
+bash run.sh --timelog
+```
+
 ---
 
 ## 📂 Project Structure & Paths
