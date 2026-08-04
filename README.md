@@ -61,6 +61,13 @@ By default, `run.sh` clears the pipeline tmp and output directories before start
 bash run.sh --keep-existing
 ```
 
+**Optional: Skip File Transfer Check**
+By default, `run.sh` checks if a file transfer into the input folder is running (for about 5 seconds. If it is, run.sh waits for 5 minutes and then checks again. This prevents starting jobs that have incomplete data). Pass `--now` to skip the check:
+
+```bash
+bash run.sh --now
+```
+
 **Optional: Timelogging**
 By using this command, each step will be time-logged. This is useful for delevopment (for example for calculating the factor thats used for calculating the estimated duration):
 

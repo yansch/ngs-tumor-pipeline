@@ -13,12 +13,17 @@ KEEP_EXISTING=false
 TIMELOG=false
 INPUT_DIR_ARG=""
 MAIL_USER=""
+NOW=false
 
 # --- 1. Argument Parsing ---
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+         --now)
+            NOW=true
             shift
             ;;
         --timelog)
@@ -81,7 +86,9 @@ if [ "$DRY_RUN" = false ] && [ "$KEEP_EXISTING" = false ]; then
     mkdir -p "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
 fi
 
-wartezeit=10 #in minuten (wartezeit zwischen den pr�fungen, ob der Transfer der Dateien noch l�uft oder abgeschlossen ist)
+if [ "$NOW" = false ]; then
+
+wartezeit=5 #in minuten (wartezeit zwischen den pr�fungen, ob der Transfer der Dateien noch l�uft oder abgeschlossen ist)
 get_size() {
   # total bytes used by files in directory
   du -sb ~+/input 2>/dev/null | awk '{print $1}'
@@ -106,7 +113,7 @@ while true; do
     break
     fi
 done
-
+fi
 
 
 submitted=0
@@ -184,22 +191,7 @@ while IFS= read -r R1; do
               sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/kraken2.sh" "$R1" "$R2"
               
             fi 
-            
-#             
-#             
-#             if [ "$TIMELOG" = true ]; then
-#                 #sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" "--timelog"
-#                  
-#                 sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/kraken2.sh" "$R1" "$R2" "--timelog"
-#                 
-#             else
-#                 #sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" 
-#                 sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/kraken2.sh" "$R1" "$R2"
-#                          
-#             fi
-            
-
-            
+ 
             ;;
         omen)
             echo " ?? [OMEN] Executing local run: $CASE_LABEL"
