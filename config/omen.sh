@@ -16,6 +16,7 @@ export VENV_PATH="/mnt/pipelines/ngs-tumor-pipeline/env"
 
 # --- Explicit Binary Track ---
 export BWA_BIN="$VENV_PATH/bin/bwa-mem2"
+export BOWTIE2_BIN="bowtie2"
 
 # --- Specific Reference Files ---
 export REF_GENOME="$REF_DIR/hs37d5viral.fa"
@@ -35,6 +36,9 @@ export CNV_REFERENCE="$CNV_REF_DIR/panel_v4.1_reference.cnn"
 export RELEVANT_GENES="$CNV_REF_DIR/relevant_genes.csv"
 export CYTOBAND_TXT="$CNV_REF_DIR/cytoBand.txt"
 export PANEL_REGIONS="$CNV_REF_DIR/panel_v4.1_hg19.csv"
+
+# Metagenomics host depletion reference
+export BOWTIE_INDEX="$REF_BASE/metagenomics/bowtie_index/GRCh38_noalt_as"
 
 # --- Resource Allocation ---
 export PIPELINE_THREADS=24

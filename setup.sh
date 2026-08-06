@@ -104,6 +104,23 @@ if [[ "$PIPELINE_HOST" == "omen" ]]; then
 
         echo "✅ BWA-MEM2 installed into venv bin"
     fi
+
+    if command -v bowtie2 >/dev/null 2>&1; then
+        echo "✅ Bowtie2 already available: $(which bowtie2)"
+    elif [ -x "$VENV_PATH/bin/bowtie2" ]; then
+        echo "✅ Bowtie2 already installed in venv: $VENV_PATH/bin/bowtie2"
+    else
+        echo "📥 Installing Bowtie2 via apt (Omen)..."
+        sudo apt update
+        sudo apt install -y bowtie2
+
+        if command -v bowtie2 >/dev/null 2>&1; then
+            echo "✅ Bowtie2 installed: $(which bowtie2)"
+        else
+            echo "❌ Bowtie2 installation via apt did not make the binary available." >&2
+            exit 1
+        fi
+    fi
 fi
 
 # --- 3. Directory Infrastructure ---

@@ -51,6 +51,8 @@ export CASE_LABEL="${R1_base%_R1_001}"
 export OUT_DIR="$RESULTS_BASE/${CASE_LABEL}"
 export TMP_DIR="$SCRATCH_DIR/tmp/${CASE_LABEL}"
 export CNV_DIR="$OUT_DIR/cnv"
+export METAGENOMICS_DIR="$OUT_DIR/metagenomics"
+export NONHUMAN_DIR="$METAGENOMICS_DIR/nonhuman_reads"
 export LOG_DIR="$OUT_DIR/log"
 
 export BAM_FILE_ARRIBA="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.arriba.bam"
@@ -116,6 +118,8 @@ if [ "$PIPELINE_HOST" = "palma" ]; then
         PID_COV=$!
 
         wait $PID_PLOTS $PID_COV
+
+        source "$PROJECT_DIR/components/10_nonhuman_reads/run_nonhuman_reads.sh"
     ) &
     PID_BRANCH_B=$!
 
@@ -178,6 +182,14 @@ else
     source "$PROJECT_DIR/components/05_cnvkit/run_cnvkit.sh"
     source "$PROJECT_DIR/components/06_cnv_plots/run_cnv_plots.sh"
     source "$PROJECT_DIR/components/07_coverage/run_coverage.sh"
+    source "$PROJECT_DIR/components/10_nonhuman_reads/run_nonhuman_reads.sh"
+
+    purge_modules
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+    load_ngs_python_env
+    unset PYTHONPATH
+
     source "$PROJECT_DIR/components/08_variants/run_variants.sh"
     source "$PROJECT_DIR/components/09_report/run_report.sh"
 fi

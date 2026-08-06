@@ -19,6 +19,9 @@ SAMTOOLS_MODULES=("GCC/13.3.0" "SAMtools/1.21")
 export BWA_TOOLCHAIN_MODULE="palma/2024a"
 BWA_MODULES=("GCC/13.3.0" "bwa-mem2/2.2.1")
 
+export BOWTIE2_TOOLCHAIN_MODULE="palma/2024a"
+BOWTIE2_MODULES=("GCC/13.3.0" "Bowtie2/2.5.4")
+
 # Downstream Analysis Group
 export ANALYSIS_TOOLCHAIN_MODULE="palma/2024a"
 PYTHON_MODULES=("GCCcore/13.3.0" "Python/3.12.3")
@@ -55,6 +58,10 @@ export CNV_REFERENCE="$CNV_REF_DIR/panel_v4.1_reference.cnn"
 export RELEVANT_GENES="$PROJECT_DIR/resources/relevant_genes.csv"
 export CYTOBAND_TXT="$CNV_REF_DIR/cytoBand.txt"
 export PANEL_BED="$CNV_REF_DIR/panel_v4.1_hg19.csv"
+
+# Metagenomics host depletion reference
+export BOWTIE_INDEX="$REF_ROOT/metagenomics/bowtie_index/GRCh38_noalt_as"
+export BOWTIE2_BIN="bowtie2"
 
 # --- Resource Allocation ---
 export PIPELINE_THREADS=32
