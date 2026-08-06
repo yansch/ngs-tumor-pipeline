@@ -19,7 +19,6 @@ export BWA_BIN="$VENV_PATH/bin/bwa-mem2"
 
 # --- Specific Reference Files ---
 export REF_GENOME="$REF_DIR/hs37d5viral.fa"
-# STAR stays on the viral hs37d5-based index for Arriba only.
 export STAR_INDEX="$REF_DIR/STAR_index_hs37d5viral_GENCODE19"
 export STAR_INDEX_ARRIBA="$STAR_INDEX"
 export REF_GENOME_CNV="$REF_DIR/hg19.fa"

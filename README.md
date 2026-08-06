@@ -90,6 +90,7 @@ Use `bash run.sh --help` to see all options.
 * **Inputs:** Put FASTQ and VCF files into the subfolder `input`.
 * **Outputs:** Results will be generated in the subfolder `output`.
 * Scripts and dependencies are stored in the directories `scripts` and `env`, respectively.
+* Shared genome and annotation references on Palma are located under `/cloud/wwu1/e_np_ngs/`.
 
 ## 🆘 Troubleshooting
 

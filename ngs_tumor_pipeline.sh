@@ -34,6 +34,16 @@ R2_PATH="$2"
 # ---------------------------------------------------------------------------
 THREADS=${SLURM_CPUS_PER_TASK:-$PIPELINE_THREADS}
 
+# Split the Slurm CPU allocation across the concurrent heavy branches on Palma.
+# fastp still runs first with the full budget; only the downstream parallel
+# branches use the split allocation.
+if [ "$PIPELINE_HOST" = "palma" ]; then
+    STAR_THREADS=$(( THREADS / 2 ))
+    BWA_THREADS=$(( THREADS - STAR_THREADS ))
+    if [ "$STAR_THREADS" -lt 1 ]; then STAR_THREADS=1; fi
+    if [ "$BWA_THREADS" -lt 1 ]; then BWA_THREADS=1; fi
+fi
+
 R1_base=$(basename "$R1_PATH" .fastq.gz)
 R2_base=$(basename "$R2_PATH" .fastq.gz)
 export CASE_LABEL="${R1_base%_R1_001}"
@@ -76,6 +86,8 @@ if [ "$PIPELINE_HOST" = "palma" ]; then
     # Branch A: STAR alignment -> Arriba fusion detection
     (
         set -eo pipefail
+        THREADS="$STAR_THREADS"
+        export THREADS
         source "$PROJECT_DIR/components/02_star/run_star.sh"
         source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
     ) &
@@ -84,6 +96,8 @@ if [ "$PIPELINE_HOST" = "palma" ]; then
     # Branch B: BWA-MEM2 alignment -> CNVkit -> CNV plots & Coverage
     (
         set -eo pipefail
+        THREADS="$BWA_THREADS"
+        export THREADS
         source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
 
         # Switch to analysis env for CNV/coverage steps
