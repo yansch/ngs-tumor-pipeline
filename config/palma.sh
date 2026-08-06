@@ -58,6 +58,7 @@ export CNV_REFERENCE="$CNV_REF_DIR/panel_v4.1_reference.cnn"
 export RELEVANT_GENES="$PROJECT_DIR/resources/relevant_genes.csv"
 export CYTOBAND_TXT="$CNV_REF_DIR/cytoBand.txt"
 export PANEL_BED="$CNV_REF_DIR/panel_v4.1_hg19.csv"
+export PANEL_REGIONS="$PANEL_BED"
 
 # Metagenomics host depletion reference
 export BOWTIE_INDEX="$REF_ROOT/metagenomics/bowtie_index/GRCh38_noalt_as"
