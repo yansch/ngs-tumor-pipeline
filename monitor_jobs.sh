@@ -105,6 +105,8 @@ render_status() {
 
     FILTERED_HISTORY=""
     while read -r id name state exitcode; do
+        [ -n "$id" ] || continue
+
         SKIP=false
         for active_id in "${ACTIVE_JOB_IDS[@]}"; do
             if [ "$id" = "$active_id" ]; then
