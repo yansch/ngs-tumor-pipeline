@@ -96,20 +96,42 @@ render_status() {
     # Filtering for main jobs (ignoring .batch/.extern steps)
     HISTORY=$(sacct -u "$USER" -S $(date -d "24 hours ago" +%Y-%m-%dT%H:%M) --format="JobID,JobName%25,State,ExitCode" --noheader | grep "NGS_" | grep -v "\." || true)
 
-    if [ -z "$HISTORY" ]; then
+    ACTIVE_JOB_IDS=()
+    if [ -n "$ACTIVE_JOBS" ]; then
+        while IFS='|' read -r id name state time start extra; do
+            [ -n "$id" ] && ACTIVE_JOB_IDS+=("$id")
+        done <<< "$ACTIVE_JOBS"
+    fi
+
+    FILTERED_HISTORY=""
+    while read -r id name state exitcode; do
+        SKIP=false
+        for active_id in "${ACTIVE_JOB_IDS[@]}"; do
+            if [ "$id" = "$active_id" ]; then
+                SKIP=true
+                break
+            fi
+        done
+        [ "$SKIP" = true ] && continue
+        FILTERED_HISTORY+="$id $name $state $exitcode"$'\n'
+    done <<< "$HISTORY"
+
+    if [ -z "$FILTERED_HISTORY" ]; then
         echo "    No NGS job history found for the last 24 hours."
     else
         printf "    %-10s %-25s %-15s %-10s\n" "JOBID" "CASE" "STATE" "EXIT"
         while read -r id name state exitcode; do
             # Mark failures with a cross
-            STATUS_ICON="✅"
+            STATUS_ICON="❓"
             [[ "$state" == "FAILED"* ]] && STATUS_ICON="❌"
             [[ "$state" == "TIMEOUT"* ]] && STATUS_ICON="❌"
             [[ "$state" == "CANCELLED"* ]] && STATUS_ICON="🛑"
             [[ "$state" == "RUNNING" ]] && STATUS_ICON="⚙️ "
+            [[ "$state" == "PENDING"* ]] && STATUS_ICON="⏳"
+            [[ "$state" == "COMPLETED"* ]] && STATUS_ICON="✅"
 
             printf "    %-10s %-25s %-15s %-10s %s\n" "$id" "$name" "$state" "$exitcode" "$STATUS_ICON"
-        done <<< "$HISTORY"
+        done <<< "$FILTERED_HISTORY"
     fi
 
     echo ""
