@@ -158,16 +158,16 @@ render_status() {
     if [ -z "$UNIQUE_CASES" ]; then
         echo "    No log directories found under $RESULTS_BASE"
     else
-        printf "    %-20s %-s\n" "CASE ID" "RELATIVE LOG PATH"
+        printf "    %-20s %-s\n" "CASE ID" "ABSOLUTE LOG PATH"
         while read -r case_id; do
             log_dir="$RESULTS_BASE/$case_id/log"
-            rel_path=$(realpath -m --relative-to=. "$log_dir" 2>/dev/null || echo "$log_dir")
-            printf "    %-20s %-s\n" "$case_id" "$rel_path"
+            abs_path=$(realpath "$log_dir" 2>/dev/null || echo "$log_dir")
+            printf "    %-20s %-s\n" "$case_id" "$abs_path"
         done <<< "$UNIQUE_CASES"
 
         echo ""
         echo "    To view a desired log using tail -f:"
-        echo "    tail -f <RELATIVE_LOG_PATH>/[JOBID]_*.out"
+        echo "    tail -f <ABSOLUTE_LOG_PATH>/[JOBID]_*.out"
     fi
 
     echo "-------------------------------------------------------"
