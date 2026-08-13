@@ -58,7 +58,7 @@ export PIPELINE_THREADS=24
 export PIPELINE_MEM="64G"
 export PIPELINE_TIME="00:30:00"
 export PIPELINE_PARTITION="requeue"
-export PIPELINE_TIME_FACTOR=767
+export PIPELINE_TIME_FACTOR=1896
 export SORT_MEM_BASE=20000
 
 # --- Runtime & Output Paths ---
