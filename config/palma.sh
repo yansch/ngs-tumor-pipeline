@@ -60,6 +60,7 @@ export PIPELINE_TIME="00:30:00"
 export PIPELINE_PARTITION="requeue"
 export PIPELINE_TIME_FACTOR=1896
 export SORT_MEM_BASE=20000
+export WAIT_TIME=5 #in minutes
 
 # --- Runtime & Output Paths ---
 export SCRATCH_DIR="/scratch/tmp/$USER/ngs-tumor-pipeline"

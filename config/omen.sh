@@ -41,6 +41,7 @@ export PANEL_REGIONS="$CNV_REF_DIR/panel_v4.1_hg19.csv"
 export PIPELINE_THREADS=24
 export PIPELINE_MEM="64G"
 export SORT_MEM_BASE=20000
+export WAIT_TIME=2 #in minutes
 
 # --- Runtime & Output Paths ---
 export SCRATCH_DIR="/data/ngs-tumor-pipeline"

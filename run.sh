@@ -1,6 +1,7 @@
 #!/bin/bash
 # run.sh - Orchestrator for NGS Tumor Pipeline
 set -eo pipefail
+trap 'echo "run.sh - Orchestrator failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 # Source configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,6 +12,8 @@ DRY_RUN=false
 KEEP_EXISTING=false
 INPUT_DIR_ARG=""
 MAIL_USER=""
+NOW=false
+TIMELOG=false #currently not implemented in main pipelines, debug function
 
 # --- 1. Argument Parsing ---
 while [[ $# -gt 0 ]]; do
@@ -21,6 +24,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --keep-existing)
             KEEP_EXISTING=true
+            shift
+            ;;
+        --now)
+            NOW=true
+            shift
+            ;;
+        --timelog)
+            TIMELOG=true
             shift
             ;;
         --mail-user=*)
@@ -75,6 +86,37 @@ if [ "$DRY_RUN" = false ] && [ "$KEEP_EXISTING" = false ]; then
     mkdir -p "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
 fi
 
+if [ "$NOW" = false ]; then
+#safety function, checks if a file transfer into input dir is still running or not. Default enabled, skip by passing --now
+GET_SIZE() {
+  # total bytes used by files in directory
+  du -sb "$INPUT_DIR" 2>/dev/null | awk '{print $1}'
+}
+echo "⚙️ File transfer safety check enabled by default. To start immediately, run 'bash run.sh --now'."
+echo "⚙️ Checking for active file transfer"
+SLEEPTIMER=$(echo "scale=0; $WAIT_TIME * 60" | bc) 
+PREV_SIZE=$(GET_SIZE) #quick check if a file transfer is running
+sleep 5
+CUR_SIZE=$(GET_SIZE)
+
+while true; do
+    if [ "$PREV_SIZE" -lt "$CUR_SIZE" ]; then
+    
+        echo -e "$(date '+%H:%M:%S') ⚙️ File transfer active. Checking again in $WAIT_TIME minutes."
+        sleep $SLEEPTIMER
+        PREV_SIZE=$(get_size)
+        sleep 5
+        CUR_SIZE=$(get_size)
+    
+    elif [ "$PREV_SIZE" -eq "$CUR_SIZE" ]; then
+    
+        echo -e "$(date '+%H:%M:%S') ⚙️ File transfer finished, continuing"
+        echo "-------------------------------------------------------"
+        break
+    fi
+done
+fi
+
 submitted=0
 
 # --- 3. Processing Loop ---
@@ -101,13 +143,12 @@ while IFS= read -r R1; do
             echo " 📤 [PALMA] Calculating dynamic runtime limit for: $CASE_LABEL"
             R1_size=$(wc -c < "$R1")
             R2_size=$(wc -c < "$R2")
-            x=767  # Time needed per GB in seconds, based on NovaseqX data by YA
-
+            
             combined_bytes=$(( R1_size + R2_size ))
             combined_size_gb=$(printf "%.2f" "$(echo "scale=2; $combined_bytes / 1073741824" | bc)")
 
             # Ensure a minimum time limit of 30 minutes (1800 seconds)
-            calculated_time_needed=$(( combined_bytes * x / 1073741824 ))
+            calculated_time_needed=$(( combined_bytes * PIPELINE_TIME_FACTOR / 1073741824 ))
             if (( calculated_time_needed < 1800 )); then
                 calculated_time_needed=1800
             fi
@@ -138,8 +179,15 @@ while IFS= read -r R1; do
                     --mail-type=ALL
                 )
             fi
-            
-            sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2"
+
+            if [ "$TIMELOG" = true ]; then
+                       
+                sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" "--timelog"
+
+            else
+                sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2"
+
+            fi  
             ;;
         omen)
             echo " 🚀 [OMEN] Executing local run: $CASE_LABEL"
@@ -165,5 +213,8 @@ echo "😊 Submitted cases: $submitted"
 [ "$DRY_RUN" = true ] && echo "   Note: Dry-run complete. No jobs were executed."
 if [ "$PIPELINE_HOST" = "palma" ]; then
     echo "   Tip: use 'bash monitor_jobs.sh' to check Palma job status and logs."
+    if [ "$TIMELOG" = true ]; then
+        echo "⚙️  Time logging has been enabled for all jobs. Runtimes for each step will be captured."
+    fi
 fi
 echo "-------------------------------------------------------"
