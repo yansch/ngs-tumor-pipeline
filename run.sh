@@ -13,7 +13,8 @@ KEEP_EXISTING=false
 INPUT_DIR_ARG=""
 MAIL_USER=""
 NOW=false
-TIMELOG=false #currently not implemented in main pipelines, debug function
+TIMELOG=false #currently not implemented in main pipelines, dev function
+THIS_CASE_ONLY=""
 
 # --- 1. Argument Parsing ---
 while [[ $# -gt 0 ]]; do
@@ -47,6 +48,15 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             ;;
+        --only)
+            if [[ $# -gt 1 && "$2" != --* ]]; then
+                THIS_CASE_ONLY="$2"
+                shift 2
+            else
+                echo "❌ Error: --only requires a valid case identifier."
+                exit 1
+            fi
+            ;;
         *)
             if [[ -d "$1" ]]; then
                 INPUT_DIR_ARG="$1"
@@ -65,25 +75,30 @@ fi
 
 # --- 2. Environment Initialization ---
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-echo "-------------------------------------------------------"
-echo "🧬 Host detected:  $PIPELINE_HOST"
-echo "📂 Scanning path:  $INPUT_DIR"
-echo "📊 Results path:   $RESULTS_BASE"
+echo "----------------------------------------------------------------------------------------------------------------"
+echo -e "🧬 Host detected:\t$PIPELINE_HOST"
+echo -e "📂 Scanning path:\t$INPUT_DIR"
+echo -e "📊 Results path:\t$RESULTS_BASE"
 if [ -n "$MAIL_USER" ]; then
-    echo "📧 Slurm email:    $MAIL_USER"
+    echo -e "📧 Slurm email:\t\t$MAIL_USER"
 fi
-if [ "$KEEP_EXISTING" = true ]; then
-    echo "🧹 Cleanup:        preserving existing tmp/output"
+if [ "$KEEP_EXISTING" = true ] || [ -n "$THIS_CASE_ONLY" ]; then
+    echo -e "🧹 Cleanup:\t\tpreserving existing tmp/output"
+    if [[ -n "$THIS_CASE_ONLY" ]]; then
+        echo -e "🧹\t\t\tSkipped Cleanup because --only option was given"
+    fi
 else
-    echo "🧹 Cleanup:        clearing tmp/output before run"
+    echo -e "🧹 Cleanup:\t\tclearing tmp/output before run"
 fi
-echo "-------------------------------------------------------"
+
 
 mkdir -p "$RESULTS_BASE" "$SCRATCH_DIR"
 
 if [ "$DRY_RUN" = false ] && [ "$KEEP_EXISTING" = false ]; then
-    rm -rf "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
-    mkdir -p "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
+    if [[ -z "$THIS_CASE_ONLY" ]]; then
+        rm -rf "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
+        mkdir -p "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
+    fi
 fi
 
 if [ "$NOW" = false ]; then
@@ -92,30 +107,54 @@ GET_SIZE() {
   # total bytes used by files in directory
   du -sb "$INPUT_DIR" 2>/dev/null | awk '{print $1}'
 }
-echo "⚙️ File transfer safety check enabled by default. To start immediately, run 'bash run.sh --now'."
-echo "⚙️ Checking for active file transfer"
+
+if [ -n "$WAIT_TIME" ] || [ "$WAIT_TIME" -eq 0 ]; then
+    WAIT_TIME=5 #safety setting, in case Wait time isnt externally set or set to 0
+fi
+
 SLEEPTIMER=$(echo "scale=0; $WAIT_TIME * 60" | bc) 
-PREV_SIZE=$(GET_SIZE) #quick check if a file transfer is running
-sleep 5
+PREV_SIZE=$(GET_SIZE) #quick check if a file transfer is running with a small loading bar
+
+for ((i=0; i<=WAIT_TIME; i++)); do
+    filled=$i
+    empty=$((WAIT_TIME - i))
+
+    # Loading Bar for initial check
+    bar_filled=$(printf '%*s' "$filled" '' | tr ' ' '#')
+    bar_empty=$(printf '%*s' "$empty" '' | tr ' ' '-')
+
+    # \r = carriage return (overwrite same line) \n breaks it
+    printf '\r⚙ [SAFETY][%s%s]\tChecking for active file transfer. Skip by passing --now.' "$bar_filled" "$bar_empty" 
+
+    sleep 1
+done
+
+echo 
+
 CUR_SIZE=$(GET_SIZE)
 
 while true; do
+    TIMECHECK=$(date +"%H:%M:%S")
     if [ "$PREV_SIZE" -lt "$CUR_SIZE" ]; then
-    
-        echo -e "$(date '+%H:%M:%S') ⚙️ File transfer active. Checking again in $WAIT_TIME minutes."
+        
+        printf '\r⚙\t\t\tFile transfer still active. Last checked at [ %s ]. Checking again in %s minutes.' "$TIMECHECK" "$WAIT_TIME"
+           
         sleep $SLEEPTIMER
-        PREV_SIZE=$(get_size)
+        PREV_SIZE=$(GET_SIZE)
         sleep 5
-        CUR_SIZE=$(get_size)
+        CUR_SIZE=$(GET_SIZE)
     
     elif [ "$PREV_SIZE" -eq "$CUR_SIZE" ]; then
-    
-        echo -e "$(date '+%H:%M:%S') ⚙️ File transfer finished, continuing"
-        echo "-------------------------------------------------------"
+        TIMECHECK=$(date +"%H:%M:%S - %d.%m.%Y")
+        echo "----------------------------------------------------------------------------------------------------------------" 
+        printf '⚙\t\t\tFile transfer finished at [ %s ]' "$TIMECHECK"
+        echo
         break
     fi
 done
 fi
+
+
 
 submitted=0
 
@@ -132,7 +171,7 @@ while IFS= read -r R1; do
     CASE_LABEL="${CASE_ID%_R1_001}"
 
     if [ "$DRY_RUN" = true ]; then
-        echo " 🔍 [DRY-RUN] Found: $CASE_LABEL"
+        echo -e "🔍 [DRY-RUN]\t\tFound: $CASE_LABEL"
         (( submitted++ )) || true
         continue
     fi
@@ -140,7 +179,7 @@ while IFS= read -r R1; do
     # --- Dispatch Logic ---
     case "$PIPELINE_HOST" in
         palma)
-            echo " 📤 [PALMA] Calculating dynamic runtime limit for: $CASE_LABEL"
+            echo -e "📤 [PALMA]\t\tCalculating dynamic runtime limit for: $CASE_LABEL"
             R1_size=$(wc -c < "$R1")
             R2_size=$(wc -c < "$R2")
             
@@ -158,7 +197,7 @@ while IFS= read -r R1; do
             secs=$(( calculated_time_needed % 60 ))
 
             duration=$(printf "%02d:%02d:%02d" $hours $mins $secs)
-            echo " 📤 [PALMA] Submitting Slurm job: $CASE_LABEL | size: ${combined_size_gb} GB | estimated limit: $duration"
+            echo -e "📤 [PALMA]\t\tSubmitting Slurm job: $CASE_LABEL | size: ${combined_size_gb} GB | estimated max runtime: $duration"
 
             LOG_DIR="$RESULTS_BASE/${CASE_LABEL}/log"
             mkdir -p "$LOG_DIR"
@@ -171,6 +210,7 @@ while IFS= read -r R1; do
                 --partition="$PIPELINE_PARTITION"
                 --output="$LOG_DIR/%j_${CASE_LABEL}_${TIMESTAMP}.out"
                 --error="$LOG_DIR/%j_${CASE_LABEL}_${TIMESTAMP}.err"
+                --parsable
             )
             
             if [ -n "$MAIL_USER" ]; then
@@ -182,15 +222,16 @@ while IFS= read -r R1; do
 
             if [ "$TIMELOG" = true ]; then
                        
-                sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" "--timelog"
+                id=$(sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" "--timelog")
 
             else
-                sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2"
-
-            fi  
+                id=$(sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2")
+            
+            fi
+            printf '📤 [PALMA JOB]\t\t%s\n' "$id"  #for nice formatting only, in line with other formatting
             ;;
         omen)
-            echo " 🚀 [OMEN] Executing local run: $CASE_LABEL"
+            echo -e "🚀 [OMEN]\t\tExecuting local run: $CASE_LABEL"
             LOG_DIR="$RESULTS_BASE/${CASE_LABEL}/log"
             mkdir -p "$LOG_DIR"
             LOG_FILE="$LOG_DIR/pipeline_${TIMESTAMP}.log"
@@ -205,16 +246,16 @@ while IFS= read -r R1; do
     esac
 
     (( submitted++ )) || true
-done < <(find "$INPUT_DIR" -maxdepth 1 -name "*_R1_*.fastq.gz" | sort)
+done < <(find "$INPUT_DIR" -maxdepth 1 -name "*$THIS_CASE_ONLY*_R1_*.fastq.gz" | sort)
 
 # --- 4. Summary ---
-echo "-------------------------------------------------------"
-echo "😊 Submitted cases: $submitted"
-[ "$DRY_RUN" = true ] && echo "   Note: Dry-run complete. No jobs were executed."
+echo "----------------------------------------------------------------------------------------------------------------"
+echo -e "😊 Submitted cases:\t$submitted"
+[ "$DRY_RUN" = true ] && echo -e "   Note:\t\tDry-run complete. No jobs were executed."
 if [ "$PIPELINE_HOST" = "palma" ]; then
-    echo "   Tip: use 'bash monitor_jobs.sh' to check Palma job status and logs."
+    echo -e "   Tip:\t\t\tuse 'bash monitor_jobs.sh' to check Palma job status and logs."
     if [ "$TIMELOG" = true ]; then
-        echo "⚙️  Time logging has been enabled for all jobs. Runtimes for each step will be captured."
+        echo -e "⚙\t\t\tTime logging has been enabled for all jobs. Runtimes for each step will be captured."
     fi
 fi
-echo "-------------------------------------------------------"
+echo "----------------------------------------------------------------------------------------------------------------"

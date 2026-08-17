@@ -62,7 +62,7 @@ bash run.sh --keep-existing
 ```
 
 **Optional: Skip File Transfer Check**
-By default, `run.sh` checks if a file transfer into the input folder is running. If yes, `run.sh` waits for x minutes (defined in config files, 2 for omen / local, 5 for palma) and then checks again. This prevents starting jobs that have incomplete data. Pass `--now` to skip the check:
+By default, `run.sh` checks if a file transfer into the input folder is running. If yes, `run.sh` waits for x minutes (defined in config files, 2 for omen / local, 5 for palma, defaults to 5 if unset) and then checks again. This prevents starting jobs that have incomplete data. Pass `--now` to skip the check:
 
 ```bash
 bash run.sh --now
@@ -70,12 +70,20 @@ bash run.sh --now
 Note: For Nextseq data 5 minutes between checks is fine. If you have big files, consider upping the time between checks. 
 Only really relevant if you're *technically* not allowed to use the login nodes of the cluster for computations, e.g. for checking every minute if the transfer finished. ;)
 
+The first check will display a loading bar that is dependent on the value set in the config files. The loading bars only purpose is better user experience.
 
 **Optional: Timelog**
 By using this command, each steps runtime will be time-logged. This is useful for delevopment (for example for calculating the factor thats used for calculating the estimated duration). *This function is currently not implemented in the main pipeline.*
 
 ```bash
 bash run.sh --timelog
+```
+
+**Optional: Only analyse specific cases**
+By using `--only <value>`, where value is part of the filename of the case(s) you want to analyze, you can only analzye those specific filtered cases. The filter gets added before R1 in the file name. Using this option will **not** clear tmp & output, because other jobs might still be running.
+
+```bash
+bash run.sh --only <value>
 ```
 
 ---
