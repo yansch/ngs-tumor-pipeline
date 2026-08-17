@@ -11,7 +11,7 @@ export BASE_DIR="/software/arriba_v2.5.1"
 export REF_DIR="$BASE_DIR/references_hg19"
 export ARRIBA_LIB="$BASE_DIR/var/lib/arriba"
 export CNV_REF_DIR="/mnt/pipelines/ngs-tumor-pipeline/resources"
-export REF_BASE="/opt/ngs-report-server"
+export REF_BASE="/software"
 export VENV_PATH="/mnt/pipelines/ngs-tumor-pipeline/env"
 
 # --- Explicit Binary Track ---
@@ -38,12 +38,13 @@ export CYTOBAND_TXT="$CNV_REF_DIR/cytoBand.txt"
 export PANEL_REGIONS="$CNV_REF_DIR/panel_v4.1_hg19.csv"
 
 # Metagenomics host depletion reference
-export BOWTIE_INDEX="$REF_BASE/metagenomics/bowtie_index/GRCh38_noalt_as"
+export BOWTIE_INDEX="$REF_BASE/metagenomics/bowtie_index/chm13v2.0"
 
 # --- Resource Allocation ---
 export PIPELINE_THREADS=24
 export PIPELINE_MEM="64G"
 export SORT_MEM_BASE=20000
+export WAIT_TIME=2 # in minutes
 
 # --- Runtime & Output Paths ---
 export SCRATCH_DIR="/data/ngs-tumor-pipeline"

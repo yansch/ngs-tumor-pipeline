@@ -103,8 +103,11 @@ render_status() {
         done <<< "$ACTIVE_JOBS"
     fi
 
-    FILTERED_HISTORY=""
-    while read -r id name state exitcode; do
+    FILTERED_HISTORY_LINES=()
+    while IFS= read -r line; do
+        [ -n "${line//[[:space:]]/}" ] || continue
+
+        read -r id name state exitcode <<< "$line"
         [ -n "$id" ] || continue
 
         SKIP=false
@@ -115,14 +118,16 @@ render_status() {
             fi
         done
         [ "$SKIP" = true ] && continue
-        FILTERED_HISTORY+="$id $name $state $exitcode"$'\n'
+        FILTERED_HISTORY_LINES+=("$line")
     done <<< "$HISTORY"
 
-    if [ -z "$FILTERED_HISTORY" ]; then
+    if [ ${#FILTERED_HISTORY_LINES[@]} -eq 0 ]; then
         echo "    No NGS job history found for the last 24 hours."
     else
         printf "    %-10s %-25s %-15s %-10s\n" "JOBID" "CASE" "STATE" "EXIT"
-        while read -r id name state exitcode; do
+        for line in "${FILTERED_HISTORY_LINES[@]}"; do
+            read -r id name state exitcode <<< "$line"
+
             # Mark failures with a cross
             STATUS_ICON="❓"
             [[ "$state" == "FAILED"* ]] && STATUS_ICON="❌"
@@ -133,7 +138,7 @@ render_status() {
             [[ "$state" == "COMPLETED"* ]] && STATUS_ICON="✅"
 
             printf "    %-10s %-25s %-15s %-10s %s\n" "$id" "$name" "$state" "$exitcode" "$STATUS_ICON"
-        done <<< "$FILTERED_HISTORY"
+        done
     fi
 
     echo ""

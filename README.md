@@ -61,6 +61,13 @@ By default, `run.sh` clears the pipeline tmp and output directories before start
 bash run.sh --keep-existing
 ```
 
+**Optional: Skip Active File Transfer Check**
+By default, `run.sh` checks if a file transfer into the input folder is ongoing and waits for the folder size to stabilize (`WAIT_TIME` minutes per check, 2m on Omen, 5m on Palma). Pass `--now` to skip this check and start execution immediately:
+
+```bash
+bash run.sh --now
+```
+
 **Optional: Override Configuration Values**
 You can override host config values at runtime:
 

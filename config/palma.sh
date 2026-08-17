@@ -61,7 +61,7 @@ export PANEL_BED="$CNV_REF_DIR/panel_v4.1_hg19.csv"
 export PANEL_REGIONS="$PANEL_BED"
 
 # Metagenomics host depletion reference
-export BOWTIE_INDEX="$REF_ROOT/metagenomics/bowtie_index/GRCh38_noalt_as"
+export BOWTIE_INDEX="$REF_ROOT/metagenomics/bowtie_index/chm13v2.0"
 export BOWTIE2_BIN="bowtie2"
 
 # --- Resource Allocation ---
@@ -69,6 +69,13 @@ export PIPELINE_THREADS=32
 export PIPELINE_MEM="80G"
 export PIPELINE_PARTITION="normal"
 export SORT_MEM_BASE=20000
+export WAIT_TIME=5 # in minutes
+
+# --- Slurm Runtime Estimation ---
+export PIPELINE_TIME_FACTOR=1896   # seconds per GB (empirical, NovaseqX data)
+export PIPELINE_TIME_SAFETY=1.3    # safety multiplier for headroom
+export PIPELINE_TIME_MIN=1800      # minimum job time limit in seconds (30m)
+export PIPELINE_TIME_MAX=172800    # maximum job time limit in seconds (48h)
 
 # --- Runtime & Output Paths ---
 export SCRATCH_DIR="/scratch/tmp/$USER/ngs-tumor-pipeline"

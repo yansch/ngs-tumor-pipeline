@@ -1,6 +1,7 @@
 #!/bin/bash
 # run.sh - Orchestrator for NGS Tumor Pipeline
 set -eo pipefail
+trap 'echo "run.sh - Orchestrator failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 # Locate project
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,6 +13,7 @@ INPUT_DIR_ARG=""
 MAIL_USER=""
 OVERRIDES_FILE=""
 PRESERVE_VARS=()
+NOW=false
 
 print_usage() {
         cat <<EOF
@@ -20,18 +22,12 @@ Usage: bash run.sh [options] [input_dir]
 Options:
     --dry-run                      Scan and print detected cases only.
     --keep-existing                Do not clear tmp/output before run.
+    --now                          Skip active file transfer check.
     --mail-user EMAIL              Send Slurm mail notifications to EMAIL.
     --mail-user=EMAIL              Same as above.
     --set KEY=VALUE                Override any scalar config variable (repeatable).
     --overrides-file PATH          Source a Bash overrides file after host config.
     --help                         Show this help.
-
-Precedence (lowest -> highest):
-    host config defaults < .env < --overrides-file < --set
-
-Notes:
-    - --set is intended for scalar variables (e.g. PIPELINE_THREADS=32).
-    - For arrays (e.g. FASTP_MODULES), use --overrides-file.
 EOF
 }
 
@@ -48,6 +44,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --keep-existing)
             KEEP_EXISTING=true
+            shift
+            ;;
+        --now)
+            NOW=true
             shift
             ;;
         --overrides-file=*)
@@ -177,6 +177,35 @@ if [ "$DRY_RUN" = false ] && [ "$KEEP_EXISTING" = false ]; then
     mkdir -p "$SCRATCH_DIR/tmp" "$RESULTS_BASE"
 fi
 
+if [ "$NOW" = false ] && [ "$DRY_RUN" = false ]; then
+    GET_SIZE() {
+        du -sb "$INPUT_DIR" 2>/dev/null | awk '{print $1}'
+    }
+    echo "⚙️ File transfer safety check enabled. To start immediately, run 'bash run.sh --now'."
+    echo "⚙️ Checking for active file transfer in $INPUT_DIR"
+    wait_minutes="${WAIT_TIME:-5}"
+    SLEEPTIMER=$(echo "scale=0; $wait_minutes * 60" | bc)
+    PREV_SIZE=$(GET_SIZE)
+    sleep 5
+    CUR_SIZE=$(GET_SIZE)
+
+    while true; do
+        if [ "$PREV_SIZE" -lt "$CUR_SIZE" ]; then
+            echo -e "$(date '+%H:%M:%S') ⚙️ File transfer active. Checking again in $wait_minutes minutes."
+            sleep "$SLEEPTIMER"
+            PREV_SIZE=$(GET_SIZE)
+            sleep 5
+            CUR_SIZE=$(GET_SIZE)
+        elif [ "$PREV_SIZE" -eq "$CUR_SIZE" ]; then
+            echo -e "$(date '+%H:%M:%S') ⚙️ File transfer finished, continuing."
+            echo "-------------------------------------------------------"
+            break
+        else
+            break
+        fi
+    done
+fi
+
 submitted=0
 
 # --- 3. Processing Loop ---
@@ -207,12 +236,18 @@ while IFS= read -r R1; do
             combined_bytes=$(( R1_size + R2_size ))
             combined_size_gb=$(printf "%.2f" "$(echo "scale=2; $combined_bytes / 1073741824" | bc)")
 
-            if (( combined_bytes < 4 * 1073741824 )); then
-                calculated_time_needed=$(( 2 * 3600 ))
-            elif (( combined_bytes <= 8 * 1073741824 )); then
-                calculated_time_needed=$(( 4 * 3600 ))
-            else
-                calculated_time_needed=$(( 8 * 3600 ))
+            # Hybrid runtime calculation: empirical factor (s/GB) * safety multiplier, rounded up to 30m (1800s), bounded between MIN (30m) and MAX (48h)
+            raw_seconds=$(echo "scale=0; ($combined_bytes * ${PIPELINE_TIME_FACTOR:-1896} * ${PIPELINE_TIME_SAFETY:-1.3}) / 1073741824" | bc)
+            raw_seconds=$(printf "%.0f" "$raw_seconds")
+            calculated_time_needed=$(( ((raw_seconds + 1799) / 1800) * 1800 ))
+
+            min_time="${PIPELINE_TIME_MIN:-1800}"
+            max_time="${PIPELINE_TIME_MAX:-172800}"
+
+            if (( calculated_time_needed < min_time )); then
+                calculated_time_needed=$min_time
+            elif (( calculated_time_needed > max_time )); then
+                calculated_time_needed=$max_time
             fi
 
             hours=$(( calculated_time_needed / 3600 ))
