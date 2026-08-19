@@ -113,6 +113,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 10	89692799	C	T	PTEN	NM_001304717.5:c.802C>T	missense_variant	wahrscheinlich pathogen (Varsome)	2026-04-08	
 10	89692811	G	T	PTEN	NM_001304717.5:c.814G>T	stop_gained	wahrscheinlich pathogen (Varsome)	2023-08-09	
 10	89692845	A	C	PTEN	NM_001304717.5:c.848A>C	missense_variant	wahrscheinlich pathogen (Varsome)	2024-04-08	
+10	89692866	A	G	PTEN	NM_001304717.5:c.869A>G	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 17.8.2026	2026-08-19	
 10	89692871	G	T	PTEN	NM_001304717.5:c.874G>T	missense_variant	pathogen (Varsome)	2024-02-22	
 10	89692878	C	A	PTEN	NM_001304717.5:c.881C>A	missense_variant	wahrscheinlich pathogen (Varsome Scores)	2023-04-28	
 10	89692881	T	A	PTEN	NM_001304717.5:c.884T>A	missense_variant	pathogen (Varsome)	2023-05-03	
@@ -358,6 +359,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 17	7578204	A	T	TP53	NM_000546.5:c.645T>A	missense_variant	pathogen (varsome)	2024-06-14	
 17	7578204	A	C	TP53	NM_000546.5:c.645T>G	missense_variant	pathogen (Franklin), wahrscheinlich pathogen (Varsome, OncoKB)	2026-08-07	
 17	7578205	C	A	TP53	NM_000546.5:c.644G>T	missense_variant	TA Class non-functional - pathogen (TP53 Database)	2024-07-25	
+17	7578206	T	G	TP53	NM_000546.5:c.643A>C	missense_variant	pathogen (Franklin)	2026-08-19	
 17	7578208	T	G	TP53	NM_000546.5:c.641A>C	missense_variant	wahrscheinlich pathogen (Franklin, Varsome)	2026-08-04	
 17	7578209	G	A	TP53	NM_000546.5:c.640C>T	missense_variant	pathogen (varsome), wahrscheinlich pathogen (TP53 Database - partially functional)	2024-08-15	
 17	7578211	C	A	TP53	NM_000546.5:c.638G>T	missense_variant	pathogen (TA Class non-functional TP53 Database)	2024-05-02	
@@ -711,6 +713,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 4	55133579	G	T	PDGFRA	NM_001347828.2:c.958G>T	missense_variant	likely benign (Varsome)	2026-07-06	
 4	55133622	T	C	PDGFRA	NM_001347828.2:c.1001T>C	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 23.3.2026	2026-03-27	
 4	55133716	CAGAG	C	PDGFRA	NM_001347828.2:c.1007-1_1009del	splice_acceptor_variant,coding_sequence_variant	pathogen, Splice-Mutation (Varsome)	2023-04-28	
+4	55133748	TTCAGCCAGTTGGAAGCTG	T	PDGFRA	NM_001347828.2:c.1040_1057del	inframe_deletion	Relevanz unklar (oncoKB, Franklin, Varsome) 17.8.2026	2026-08-19	
 4	55133821	C	T	PDGFRA	NM_001347828.2:c.1109C>T	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 23.3.2026	2026-03-27	
 4	55133886	G	A	PDGFRA	NM_001347828.2:c.1174G>A	missense_variant	likely benign (franklin)	2026-03-20	
 4	55133887	TGGAAAAGATTCA	T	PDGFRA	NM_001347828.2:c.1181_1192del	inframe_deletion	Relevanz unklar (Varsome)	2026-01-28	
@@ -875,12 +878,14 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 6	26020707	G	T	HIST1H3A		upstream_gene_variant	benign (Varsome)	2026-05-04	
 6	26020715	G	T	HIST1H3A		upstream_gene_variant	likely benign (Franklin Genoox (HIST1H3A c.-3G>T))	2025-01-23	
 6	26020767	C	T	HIST1H3A	NM_003529.2:c.50C>T	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 6.7.2026	2026-07-20	
+6	26020868	G	C	HIST1H3A	NM_003529.2:c.151G>C	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 17.8.2026	2026-08-19	
 6	26020949	G	A	HIST1H3A	NM_003529.2:c.232G>A	missense_variant	Relevanz unklar (oncoKB), likely benign (Varsome)	2024-01-08	
 6	26020950	A	T	HIST1H3A	NM_003529.2:c.233A>T	missense_variant	likely benign (Varsome)	2025-11-13	
 6	26020976	A	G	HIST1H3A	NM_003529.2:c.259A>G	missense_variant	benign (Varsome)	2024-08-07	
 6	26021018	T	G	HIST1H3A	NM_003529.2:c.301T>G	missense_variant	Relevanz unklar (Varsome, oncoKB, Franklin Genoox) 7.1.2025	2025-01-16	
 6	26021024	G	A	HIST1H3A	NM_003529.2:c.307G>A	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 1.12.2025 	2025-12-03	
 6	26021094	A	C	HIST1H3A	NM_003529.2:c.377A>C	missense_variant	benign (Varsome)	2024-04-03	
+6	26031885	C	G	HIST1H3B	NM_003537.3:c.404G>C	missense_variant	als Relevanz unklar befunden <= Relevanz unklar (oncoKB, Franklin), likely benign (Varsome), in Franklin als Hotspot klassifiziert mit "moderate oncogenic support" 17.8.2026	2026-08-19	
 6	26031892	C	A	HIST1H3B	NM_003537.3:c.397G>T	stop_gained	Franklin Computed Classifiaction ACMG Classification: VUS (Relevanz unklar) (22.05.2026 AA)	2026-05-22	
 6	26031973	C	G	HIST1H3B	NM_003537.3:c.316G>C	missense_variant	Relevanz unklar (Varsome) 14.8.2023	2023-08-14	
 6	26031982	C	T	HIST1H3B	NM_003537.3:c.307G>A	missense_variant	Relevanz unklar (Varsome / oncoKB)13.2.2024	2024-02-22	
