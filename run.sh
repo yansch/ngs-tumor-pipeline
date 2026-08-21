@@ -12,9 +12,9 @@ DRY_RUN=false
 KEEP_EXISTING=false
 INPUT_DIR_ARG=""
 MAIL_USER=""
-NOW=false
-TIMELOG=false #currently not implemented in main pipelines, dev function
-THIS_CASE_ONLY=""
+NOW=false           #skip checks (if updates are available or a file transfer is running)
+TIMELOG=false       #currently not implemented in main pipelines, dev function
+THIS_CASE_ONLY=""   #takes any identifier, that will match to any amount of cases, not just one
 
 # --- 1. Argument Parsing ---
 while [[ $# -gt 0 ]]; do
@@ -73,9 +73,14 @@ if [ ! -d "$INPUT_DIR" ]; then
     exit 1
 fi
 
+# Check for Updates. If updates are available, ask if user wants to update (interactively). Skip if --now is passed.
+if [ "$NOW" = false ]; then
+    update_check
+fi
+
 # --- 2. Environment Initialization ---
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-echo "----------------------------------------------------------------------------------------------------------------"
+layout
 echo -e "🧬 Host detected:\t$PIPELINE_HOST"
 echo -e "📂 Scanning path:\t$INPUT_DIR"
 echo -e "📊 Results path:\t$RESULTS_BASE"
@@ -146,11 +151,8 @@ while true; do
     
     elif [ "$PREV_SIZE" -eq "$CUR_SIZE" ]; then
         TIMECHECK=$(date +"%H:%M:%S - %d.%m.%Y")
-        echo
-        printf '⚙\t\t\tFile transfer finished at [ %s ]' "$TIMECHECK"
-        echo
-        echo "----------------------------------------------------------------------------------------------------------------"
-        echo
+        printf '\n⚙\t\t\tFile transfer finished at [ %s ]\n' "$TIMECHECK"
+        layout '='
         break
     fi
 done
@@ -251,13 +253,24 @@ while IFS= read -r R1; do
 done < <(find "$INPUT_DIR" -maxdepth 1 -name "*$THIS_CASE_ONLY*_R1_*.fastq.gz" | sort)
 
 # --- 4. Summary ---
-echo "----------------------------------------------------------------------------------------------------------------"
-echo -e "😊 Submitted cases:\t$submitted"
-[ "$DRY_RUN" = true ] && echo -e "   Note:\t\tDry-run complete. No jobs were executed."
-if [ "$PIPELINE_HOST" = "palma" ]; then
-    echo -e "   Tip:\t\t\tuse 'bash monitor_jobs.sh' to check Palma job status and logs."
-    if [ "$TIMELOG" = true ]; then
-        echo -e "⚙\t\t\tTime logging has been enabled for all jobs. Runtimes for each step will be captured."
+layout '='
+if [ "$submitted" -eq 0 ]; then
+    echo "Error! No Cases have been found!"
+    if [ -n "$(find "$INPUT_DIR" -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null)" ]; then
+        echo "Make sure all files are inside input, and not nested into additional folders!"
+        echo "At least 1 additional folder has been found in input."
+    else
+        echo "No valid fastq files have been found."
+    fi
+    exit 1
+else    
+    echo -e "😊 Submitted cases:\t$submitted"
+    [ "$DRY_RUN" = true ] && echo -e "   Note:\t\tDry-run complete. No jobs were executed."
+        if [ "$PIPELINE_HOST" = "palma" ]; then
+            echo -e "   Tip:\t\t\tuse 'bash monitor_jobs.sh' to check Palma job status and logs."
+            if [ "$TIMELOG" = true ]; then
+                echo -e "⚙\t\t\tTime logging has been enabled for all jobs. Runtimes for each step will be captured."
+            fi
     fi
 fi
-echo "----------------------------------------------------------------------------------------------------------------"
+layout '='

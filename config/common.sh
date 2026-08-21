@@ -57,3 +57,59 @@ load_ngs_python_env() {
         exit 1
     fi
 }
+
+
+# Layout Helper (defaults to -, takes any kind of symbol as argument. wont overflow inside terminal) 
+layout() {
+  local width char
+  width=$(tput cols 2>/dev/null || echo 80)
+  char=${1:--}  
+  printf "%${width}s\n" | tr ' ' "$char"
+}
+#layout      # dashes
+#layout '='  # equals
+
+update_check() {
+
+# Update Check / Interactive yes/no
+git fetch --quiet #get newest info from repo
+BEHIND=$(git rev-list --count HEAD..origin/main) #how many commits are we behind
+
+if [ "$BEHIND" -gt 0 ]; then
+    if [ "$BEHIND" -eq 1 ]; then
+        echo -e "\nThere is $BEHIND new update available."
+    else
+        echo -e "\nThere are $BEHIND new update(s) available."
+    fi
+    if [ "$BEHIND" -lt 5 ]; then
+        echo "Consider updating."
+    else
+        echo "Your Pipeline is outdated. Please update!"
+    fi
+    
+    layout '='
+    echo "Update Messages"
+    
+    # show $behind amount of commit messages:
+    git log -"$BEHIND" --format="%h %s" origin/main
+    layout '='
+        
+    # Ask user if they want to update
+    read -rp "Do you want to update now? [Y/N] " answer
+    case "${answer,,}" in
+        y|yes)
+        echo "Updating..."
+        git reset --hard origin/main
+        git pull
+        #git status -sb #test command
+        echo "Updated."
+        ;;
+        *)
+        echo "Skipping update."
+        ;;
+    esac
+else
+    echo -e "\nYou are up to date!\n"
+fi
+
+}
