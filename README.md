@@ -47,6 +47,11 @@ Run the orchestrator script. It will scan your input folder and automatically su
 bash run.sh
 ```
 
+For improved User Experience, `run.sh` checks on execution, if updates for the pipeline are available. 
+If yes, it prints out all Commit Messages since the last time it was updated and asks the user, if they want to update. 
+
+Pass `y` / `yes` to update now, press `enter` without any letter / with any letter other than `y` to skip updating.
+
 **Optional: Dry Run**
 To see what the pipeline *would* do without actually starting any jobs, use:
 
@@ -71,6 +76,8 @@ Note: For Nextseq data 5 minutes between checks is fine. If you have big files, 
 Only really relevant if you're *technically* not allowed to use the login nodes of the cluster for computations, e.g. for checking every minute if the transfer finished. ;)
 
 The first check will display a loading bar that is dependent on the value set in the config files. The loading bars only purpose is better user experience.
+
+`--now` will also skip the updater.
 
 **Optional: Timelog**
 By using this command, each steps runtime will be time-logged. This is useful for delevopment (for example for calculating the factor thats used for calculating the estimated duration). *This function is currently not implemented in the main pipeline.*
