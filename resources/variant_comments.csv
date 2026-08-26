@@ -47,6 +47,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 10	43609952	G	A	RET	NM_020975.6:c.1904G>A	missense_variant	Relevanz unklar (Varsome / oncoKB) 27.2.2023	2023-04-28	
 10	43609957	G	A	RET	NM_020975.6:c.1909G>A	missense_variant	Relevanz unklar 26.3.2024	2024-04-12	
 10	43609994	C	T	RET	NM_020975.6:c.1946C>T	missense_variant	als wahrscheinlich pathogen befunden <= Relevanz unklar (Franklin), wahrscheinlich pathogen (oncoKB, auf Grundlage von PMID 18322301), likely benign (Varsome)	2025-08-13	
+10	43609994	C	T	RET	NM_020975.6:c.1946C>T	missense_variant	vgl. N2546/26	2026-08-17	
 10	43610046	G	C	RET	NM_020975.6:c.1998G>C	missense_variant	pathogen (Varsome)	2023-04-28	
 10	43610090	A	T	RET	NM_020975.6:c.2042A>T	missense_variant	Relevanz unklar (Varsome) 17.3.2025	2025-03-19	
 10	43610129	G	A	RET	NM_020975.6:c.2081G>A	missense_variant	Relevanz unklar (Varsome, Franklin Genoox) 16.10.2024 & 21.10.2024	2024-10-21	
@@ -112,6 +113,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 10	89692799	C	T	PTEN	NM_001304717.5:c.802C>T	missense_variant	wahrscheinlich pathogen (Varsome)	2026-04-08	
 10	89692811	G	T	PTEN	NM_001304717.5:c.814G>T	stop_gained	wahrscheinlich pathogen (Varsome)	2023-08-09	
 10	89692845	A	C	PTEN	NM_001304717.5:c.848A>C	missense_variant	wahrscheinlich pathogen (Varsome)	2024-04-08	
+10	89692866	A	G	PTEN	NM_001304717.5:c.869A>G	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 17.8.2026	2026-08-19	
 10	89692871	G	T	PTEN	NM_001304717.5:c.874G>T	missense_variant	pathogen (Varsome)	2024-02-22	
 10	89692878	C	A	PTEN	NM_001304717.5:c.881C>A	missense_variant	wahrscheinlich pathogen (Varsome Scores)	2023-04-28	
 10	89692881	T	A	PTEN	NM_001304717.5:c.884T>A	missense_variant	pathogen (Varsome)	2023-05-03	
@@ -252,6 +254,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 17	7574034	C	A	TP53	NM_000546.5:c.994-1G>T	splice_acceptor_variant	wahrscheinlich pathogen (oncoKB, Franklin) Splice-Site	2026-02-12	
 17	7576852	C	A	TP53	NM_000546.5:c.993+1G>T	splice_donor_variant	pathogen (Clinvar, Splice Variant)	2024-02-22	
 17	7576853	C	G	TP53	NM_000546.5:c.993G>C	missense_variant,splice_region_variant	wahrscheinlich pathogen (Varsome)	2024-01-17	
+17	7576853	C	A	TP53	NM_000546.5:c.993G>T	missense_variant,splice_region_variant	als Relevanz unklar befunden <= Relevanz unklar (Franklin, Varsome), benign (TP53 Database TA Class functional), wahrscheinlich pathogen (oncoKB) 13.8.2026	2026-08-17	
 17	7576855	G	A	TP53	NM_000546.5:c.991C>T	stop_gained,splice_region_variant	pathogen (clinvar)	2024-04-03	
 17	7576870	C	T	TP53	NM_000546.5:c.976G>A	missense_variant	Relevanz unklar (Franklin, Varsome), wahrscheinlich pathogen (oncoKB), benign (TP53 Database TA Class functional)	2025-11-13	
 17	7576885	T	A	TP53	NM_000546.5:c.961A>T	stop_gained	pathogen	2023-11-30	
@@ -273,6 +276,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 17	7577094	G	A	TP53	NM_000546.5:c.844C>T	missense_variant	pathogen (varsome)	2023-10-16	
 17	7577096	T	A	TP53	NM_000546.5:c.842A>T	missense_variant	pathogen	2024-01-03	
 17	7577098	T	A	TP53	NM_000546.5:c.840A>T	missense_variant	pathogen (ta class non functional TP53 Database)	2024-08-22	
+17	7577099	C	T	TP53	NM_000546.5:c.839G>A	missense_variant	pathogen (oncoKB)	2026-08-17	
 17	7577100	T	C	TP53	NM_000546.5:c.838A>G	missense_variant	pathogen (Franklin), wahrscheinlich pathogen (Varsome, oncoKB)	2026-03-06	
 17	7577100	TC	T	TP53	NM_000546.5:c.837del	frameshift_variant	Varsome: pathogenic (22.05.2026 AA)	2026-05-22	
 17	7577102	C	T	TP53	NM_000546.5:c.836G>A	missense_variant	pathogen (TP53 Database TA Class non-functional)	2025-03-19	
@@ -355,6 +359,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 17	7578204	A	T	TP53	NM_000546.5:c.645T>A	missense_variant	pathogen (varsome)	2024-06-14	
 17	7578204	A	C	TP53	NM_000546.5:c.645T>G	missense_variant	pathogen (Franklin), wahrscheinlich pathogen (Varsome, OncoKB)	2026-08-07	
 17	7578205	C	A	TP53	NM_000546.5:c.644G>T	missense_variant	TA Class non-functional - pathogen (TP53 Database)	2024-07-25	
+17	7578206	T	G	TP53	NM_000546.5:c.643A>C	missense_variant	pathogen (Franklin)	2026-08-19	
 17	7578208	T	G	TP53	NM_000546.5:c.641A>C	missense_variant	wahrscheinlich pathogen (Franklin, Varsome)	2026-08-04	
 17	7578209	G	A	TP53	NM_000546.5:c.640C>T	missense_variant	pathogen (varsome), wahrscheinlich pathogen (TP53 Database - partially functional)	2024-08-15	
 17	7578211	C	A	TP53	NM_000546.5:c.638G>T	missense_variant	pathogen (TA Class non-functional TP53 Database)	2024-05-02	
@@ -418,12 +423,14 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 17	7578442	T	C	TP53	NM_000546.5:c.488A>G	missense_variant	pathogen (Clinvar)	2024-01-25	
 17	7578442	T	C	TP53	NM_000546.5:c.488A>G	missense_variant	pathogen (Varsome:pathogenic) (Franklin:likely pathogenic) 	2025-11-27	
 17	7578443	A	G	TP53	NM_000546.5:c.487T>C	missense_variant	TA class non functional - pathogen (TP53 Database)	2024-08-22	
+17	7578445	A	T	TP53	NM_000546.5:c.485T>A	missense_variant	pathogen (Franklin), wahrscheinlich pathogen (Varsome, oncoKB)	2026-08-17	
 17	7578446	T	A	TP53	NM_000546.5:c.484A>T	missense_variant	wahrscheinlich pathogen (oncoKB). somatisch bereits nachgewiesen mycancergenome: in 0,03% aller AACR GENIE cases	2023-04-28	
 17	7578449	C	T	TP53	NM_000546.5:c.481G>A	missense_variant	wahrscheinlich pathogen (oncoKB, TP53 Database) / pathogen (Varsome)	2023-11-30	
 17	7578453	GGCGCGGAC	G	TP53	NM_000546.5:c.469_476del	frameshift_variant	pathogen	2024-01-25	
 17	7578455	C	G	TP53	NM_000546.5:c.475G>C	missense_variant	pathogen (TP53 Database TA Class non-functional)	2025-04-16	
 17	7578457	C	A	TP53	NM_000546.5:c.473G>T	missense_variant	pathogen	2023-04-28	
 17	7578457	C	T	TP53	NM_000546.5:c.473G>A	missense_variant	pathogen	2024-05-16	
+17	7578457	C	A	TP53	NM_000546.5:c.473G>T	missense_variant	TP53 Database TA Class non-functional 	2026-08-17	
 17	7578458	G	A	TP53	NM_000546.5:c.472C>T	missense_variant	wahrscheinlich pathogen (oncoKB)	2023-04-28	
 17	7578458	G	C	TP53	NM_000546.5:c.472C>G	missense_variant	pathogen	2023-08-09	
 17	7578458	G	A	TP53	NM_000546.5:c.472C>T	missense_variant	+ TP53 Database TA Class partially functional	2025-11-13	
@@ -447,6 +454,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 17	7578523	TG	T	TP53	NM_000546.5:c.406del	frameshift_variant	wahrscheinlich pathogen (Varsome)	2024-10-29	
 17	7578526	C	T	TP53	NM_000546.5:c.404G>A	missense_variant	pathogen (Varsome)	2024-05-29	
 17	7578527	A	G	TP53	NM_000546.5:c.403T>C	missense_variant	pathogen (TP53 Database TA Class non-functional)	2026-03-06	
+17	7578529	A	C	TP53	NM_000546.5:c.401T>G	missense_variant	pathogen (TP53 Database TA Class non-functional)	2026-08-17	
 17	7578530	A	G	TP53	NM_000546.5:c.400T>C	missense_variant	TA-Class non functional - pathogen (TP53 Database)	2024-07-04	
 17	7578532	A	G	TP53	NM_000546.5:c.398T>C	missense_variant	pathogen (TP53 Database TA Class non-functional)	2025-09-24	
 17	7578534	CTTG	C	TP53	NM_000546.5:c.393_395del	inframe_deletion	pathogen (Varsome)	2025-09-24	
@@ -546,6 +554,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 17	62006799	A	G	CD79B	NM_001039933.3:c.589T>C	missense_variant	wahrscheinlich pathogen (Varsome)	2024-05-29	
 17	62006799	A	T	CD79B	NM_001039933.3:c.589T>A	missense_variant	wahrscheinlich pathogen (Franklin, oncoKB)	2026-03-27	
 17	73775164	G	A	H3F3B	NM_005324.5:c.92C>T	missense_variant	Relevanz unklar (oncoKB, Varsome Scores)	2023-12-19	
+17	73775170	CT	C	H3F3B	NM_005324.5:c.85del	frameshift_variant	Relevanz unklar (Franklin) 13.8.2026	2026-08-17	
 17	73775188	G	A	H3F3B	NM_005324.5:c.68C>T	missense_variant	wahrscheinlich pathogen (Varsome, Franklin), Relevanz unklar (oncoKB)	2025-08-28	
 17	73775270	G	A	H3F3B	NM_005324.5:c.-10-5C>T	splice_region_variant,intron_variant	Benign (Varsome)	2023-05-15	
 17	73775272	A	C	H3F3B	NM_005324.5:c.-10-7T>G	splice_region_variant,intron_variant	likely benign (Varsome)	2025-04-03	
@@ -631,6 +640,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 3	178919150	A	G	PIK3CA	NM_006218.4:c.635A>G	missense_variant	likely benign (Varsome)	2025-11-18	
 3	178919159	G	A	PIK3CA	NM_006218.4:c.644G>A	missense_variant	Relevanz unklar (Franklin Genoox, oncoKB) 7.1.2025	2025-01-16	
 3	178921420	GT	G	PIK3CA	NM_006218.4:c.906del	frameshift_variant	wahrscheinlich pathogen (Varsome) - Frameshift-Mutation	2023-04-28	
+3	178921502	G	A	PIK3CA	NM_006218.4:c.984G>A	stop_gained	wahrscheinlich pathogen (Franklin, Varsome)	2026-08-17	
 3	178921553	T	A	PIK3CA	NM_006218.4:c.1035T>A	missense_variant	pathogen	2023-04-28	
 3	178921559	T	A	PIK3CA	NM_006218.4:c.1041T>A	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 15.7.2026	2026-07-20	
 3	178922328	C	G	PIK3CA	NM_006218.4:c.1097C>G	missense_variant	Relevanz unklar (Varsome) 29.9.2025	2025-10-13	
@@ -684,6 +694,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 4	55131118	C	T	PDGFRA	NM_001347828.2:c.736C>T	missense_variant	Benign (varsome)	2023-05-03	
 4	55131140	G	T	PDGFRA	NM_001347828.2:c.758G>T	missense_variant	Relevanz unklar (Varsome) 27.1.2025	2025-01-30	
 4	55131148	A	T	PDGFRA	NM_001347828.2:c.766A>T	missense_variant	Relevanz unklar (Varsome)	2024-07-04	
+4	55131150	T	TGTG	PDGFRA	NM_001347828.2:c.771_773dup	inframe_insertion	Relevanz unklar (Franklin, Varsome) 13.8.2026	2026-08-17	
 4	55131161	G	C	PDGFRA	NM_001347828.2:c.779G>C	missense_variant	Relevanz unklar (Varsome/oncoKB) 15.5.2023	2023-05-15	
 4	55131161	G	T	PDGFRA	NM_001347828.2:c.779G>T	missense_variant	Relevanz unklar (varsome+ OncoKB) 25.09.2023	2023-09-26	
 4	55131161	G	A	PDGFRA	NM_001347828.2:c.779G>A	missense_variant	Relevanz unklar (Varsome) 30.10.2023	2023-11-10	
@@ -702,6 +713,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 4	55133579	G	T	PDGFRA	NM_001347828.2:c.958G>T	missense_variant	likely benign (Varsome)	2026-07-06	
 4	55133622	T	C	PDGFRA	NM_001347828.2:c.1001T>C	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 23.3.2026	2026-03-27	
 4	55133716	CAGAG	C	PDGFRA	NM_001347828.2:c.1007-1_1009del	splice_acceptor_variant,coding_sequence_variant	pathogen, Splice-Mutation (Varsome)	2023-04-28	
+4	55133748	TTCAGCCAGTTGGAAGCTG	T	PDGFRA	NM_001347828.2:c.1040_1057del	inframe_deletion	Relevanz unklar (oncoKB, Franklin, Varsome) 17.8.2026	2026-08-19	
 4	55133821	C	T	PDGFRA	NM_001347828.2:c.1109C>T	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 23.3.2026	2026-03-27	
 4	55133886	G	A	PDGFRA	NM_001347828.2:c.1174G>A	missense_variant	likely benign (franklin)	2026-03-20	
 4	55133887	TGGAAAAGATTCA	T	PDGFRA	NM_001347828.2:c.1181_1192del	inframe_deletion	Relevanz unklar (Varsome)	2026-01-28	
@@ -866,12 +878,14 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 6	26020707	G	T	HIST1H3A		upstream_gene_variant	benign (Varsome)	2026-05-04	
 6	26020715	G	T	HIST1H3A		upstream_gene_variant	likely benign (Franklin Genoox (HIST1H3A c.-3G>T))	2025-01-23	
 6	26020767	C	T	HIST1H3A	NM_003529.2:c.50C>T	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 6.7.2026	2026-07-20	
+6	26020868	G	C	HIST1H3A	NM_003529.2:c.151G>C	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 17.8.2026	2026-08-19	
 6	26020949	G	A	HIST1H3A	NM_003529.2:c.232G>A	missense_variant	Relevanz unklar (oncoKB), likely benign (Varsome)	2024-01-08	
 6	26020950	A	T	HIST1H3A	NM_003529.2:c.233A>T	missense_variant	likely benign (Varsome)	2025-11-13	
 6	26020976	A	G	HIST1H3A	NM_003529.2:c.259A>G	missense_variant	benign (Varsome)	2024-08-07	
 6	26021018	T	G	HIST1H3A	NM_003529.2:c.301T>G	missense_variant	Relevanz unklar (Varsome, oncoKB, Franklin Genoox) 7.1.2025	2025-01-16	
 6	26021024	G	A	HIST1H3A	NM_003529.2:c.307G>A	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 1.12.2025 	2025-12-03	
 6	26021094	A	C	HIST1H3A	NM_003529.2:c.377A>C	missense_variant	benign (Varsome)	2024-04-03	
+6	26031885	C	G	HIST1H3B	NM_003537.3:c.404G>C	missense_variant	als Relevanz unklar befunden <= Relevanz unklar (oncoKB, Franklin), likely benign (Varsome), in Franklin als Hotspot klassifiziert mit "moderate oncogenic support" 17.8.2026	2026-08-19	
 6	26031892	C	A	HIST1H3B	NM_003537.3:c.397G>T	stop_gained	Franklin Computed Classifiaction ACMG Classification: VUS (Relevanz unklar) (22.05.2026 AA)	2026-05-22	
 6	26031973	C	G	HIST1H3B	NM_003537.3:c.316G>C	missense_variant	Relevanz unklar (Varsome) 14.8.2023	2023-08-14	
 6	26031982	C	T	HIST1H3B	NM_003537.3:c.307G>A	missense_variant	Relevanz unklar (Varsome / oncoKB)13.2.2024	2024-02-22	
@@ -1095,6 +1109,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 8	38315013	A	C	FGFR1	NM_001174067.1:c.51T>G	stop_gained	Varsome: likely pathogenic (01.07.2025, AA)	2025-07-01	
 9	21968740	C	T	CDKN2A	NM_001195132.1:c.488G>A	missense_variant	likely benign (Varsome)	2026-05-04	
 9	21970913	C	A	CDKN2A	NM_001195132.1:c.445G>T	stop_gained	wahrscheinlich pathogen (Franklin)	2026-06-29	
+9	21970966	C	G	CDKN2A	NM_001195132.1:c.392G>C	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 17.8.2026	2026-08-17	
 9	21970985	C	G	CDKN2A	NM_001195132.1:c.373G>C	missense_variant	likely benign (Varsome)	2025-11-13	
 9	21971017	G	A	CDKN2A	NM_001195132.1:c.341C>T	missense_variant	wahrscheinlich pathogen (Varsome)	2025-07-15	
 9	21971025	GC	G	CDKN2A	NM_001195132.1:c.332del	frameshift_variant	wahrscheinlich pathogen (Franklin, Varsome)	2025-11-13	
@@ -1108,6 +1123,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 9	21971167	A	G	CDKN2A	NM_001195132.1:c.191T>C	missense_variant	Relevanz unklar (Franklin Genoox, oncoKB) 20.1.2025	2025-01-23	
 9	21971167	A	T	CDKN2A	NM_001195132.1:c.191T>A	missense_variant	Relevanz unklar (Varsome, Franklin, oncoKB) 16.3.2026	2026-03-20	
 9	21971177	CCG	C	CDKN2A	NM_001195132.1:c.179_180del	frameshift_variant	Franklin genoox: Computed classification, ACMG cl. -> likely pathogenic; 29.05.2026 (AA)	2026-05-29	
+9	21971186	G	A	CDKN2A	NM_001195132.1:c.172C>T	stop_gained	pathogen (Franklin)	2026-08-17	
 9	21971195	CCAT	C	CDKN2A	NM_001195132.1:c.160_162del	inframe_deletion	wahrscheinlich pathogen (varsome)	2024-08-07	
 9	21971198	TCATC	T	CDKN2A	NM_001195132.1:c.156_159del	frameshift_variant	wahrscheinlich pathogen (Franklin, Varsome)	2026-04-01	
 9	21971209	T	A	CDKN2A	NM_001195132.1:c.151-2A>T	splice_acceptor_variant	wahrscheinlich pathogen (Varsome)	2025-03-19	
