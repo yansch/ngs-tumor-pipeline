@@ -47,51 +47,59 @@ Run the orchestrator script. It will scan your input folder and automatically su
 bash run.sh
 ```
 
-For improved User Experience, `run.sh` checks on execution, if updates for the pipeline are available. 
-If yes, it prints out all Commit Messages since the last time it was updated and asks the user, if they want to update. 
+On launch, `run.sh` checks if remote updates are available on `origin/main`. If new commits exist, it prints the recent commit messages and interactively asks if you wish to update (`[y/N]`).
+*(Note: Confirming the update executes `git reset --hard origin/main` to sync with remote, discarding uncommitted local changes.)*
 
-Pass `y` / `yes` to update now, press `enter` without any letter / with any letter other than `y` to skip updating.
+---
 
-**Optional: Dry Run**
-To see what the pipeline *would* do without actually starting any jobs, use:
+### Optional Flags & Options
+
+**Filter Specific Cases:**
+Analyze only cases matching a specific identifier/substring without clearing existing outputs:
+
+```bash
+bash run.sh --only <case_id>
+```
+
+**Dry Run:**
+See what the pipeline *would* do without actually submitting any jobs:
 
 ```bash
 bash run.sh --dry-run
 ```
 
-**Optional: Preserve Existing Outputs**
-By default, `run.sh` clears the pipeline tmp and output directories before starting a new run. To keep previous results, pass:
+**Preserve Existing Outputs:**
+By default, `run.sh` clears pipeline tmp and output directories before starting a new batch. Pass `--keep-existing` to keep previous results:
 
 ```bash
 bash run.sh --keep-existing
 ```
 
-**Optional: Skip File Transfer Check**
-By default, `run.sh` checks if a file transfer into the input folder is running. If yes, `run.sh` waits for x minutes (defined in config files, 2 for omen / local, 5 for palma, defaults to 5 if unset) and then checks again. This prevents starting jobs that have incomplete data. Pass `--now` to skip the check:
+**Skip File Transfer & Update Checks:**
+By default, `run.sh` checks for remote updates and verifies that input file transfers have completed (`WAIT_TIME` minutes per check, 2m on Omen, 5m on Palma). Pass `--now` to skip these checks and start immediately:
 
 ```bash
 bash run.sh --now
 ```
-Note: For Nextseq data 5 minutes between checks is fine. If you have big files, consider upping the time between checks. 
-Only really relevant if you're *technically* not allowed to use the login nodes of the cluster for computations, e.g. for checking every minute if the transfer finished. ;)
 
-The first check will display a loading bar that is dependent on the value set in the config files. The loading bars only purpose is better user experience.
-
-`--now` will also skip the updater.
-
-**Optional: Timelog**
-By using this command, each steps runtime will be time-logged. This is useful for delevopment (for example for calculating the factor thats used for calculating the estimated duration). *This function is currently not implemented in the main pipeline.*
+**Override Configuration Values:**
+You can override configuration variables at runtime without editing config files:
 
 ```bash
-bash run.sh --timelog
+# Scalar overrides from CLI (repeat --set as needed)
+bash run.sh --set PIPELINE_THREADS=32 --set RESULTS_BASE=/scratch/tmp/$USER/ngs-output
+
+# File-based overrides (recommended for arrays/modules)
+bash run.sh --overrides-file /path/to/my-overrides.sh
 ```
 
-**Optional: Only analyse specific cases**
-By using `--only <value>`, where value is part of the filename of the case(s) you want to analyze, you can only analzye those specific filtered cases. The filter gets added before R1 in the file name. Using this option will **not** clear tmp & output, because other jobs might still be running.
+Override precedence:
+1. Host defaults (`config/omen.sh` or `config/palma.sh`)
+2. `.env` (if present in project root)
+3. `--overrides-file`
+4. `--set`
 
-```bash
-bash run.sh --only <value>
-```
+Use `bash run.sh --help` to see all available CLI options.
 
 ---
 
@@ -99,7 +107,8 @@ bash run.sh --only <value>
 
 * **Inputs:** Put FASTQ and VCF files into the subfolder `input`.
 * **Outputs:** Results will be generated in the subfolder `output`.
-* Scripts and dependencies are stored in the directories `scripts` and `env`, respectively.
+* **Components:** Individual analysis steps are located in modular scripts under `components/01_fastp` through `components/10_nonhuman_reads`.
+* **Shared References:** Shared genome and annotation references on Palma are located under `/cloud/wwu1/e_np_ngs/references/`.
 
 ## 🆘 Troubleshooting
 

@@ -236,7 +236,7 @@ def generate_cnv_section(directory, doc_width, styles, is_metagenomics=False):
             with open(cnv_genes_file, "r", encoding="utf-8") as f:
                 cnv_genes_data = json.load(f)
             
-            amps = cnv_genes_data.get("amplifications", [])
+            amps = [item for item in cnv_genes_data.get("amplifications", []) if float(item.get("log2", 0)) > 3.0]
             dels = cnv_genes_data.get("deletions", [])
             
             if amps or dels:
@@ -287,7 +287,7 @@ def generate_cnv_section(directory, doc_width, styles, is_metagenomics=False):
                 ]))
             else:
                 story.append(Spacer(1, 0.1 * inch))
-                story.append(Paragraph("No focal copy number amplifications (log2 >= 1.5) or deletions detected under current thresholds.", styles['Normal']))
+                story.append(Paragraph("No focal copy number amplifications (log2 > 3.0) or deletions detected under current thresholds.", styles['Normal']))
         except Exception as e:
             print(f"Warning: Could not process CNV genes summary: {e}")
 
@@ -612,7 +612,7 @@ def main():
 
     # Load fusion genes for highlighting
     fusion_genes = []
-    fusion_genes_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "fusion_genes.csv")
+    fusion_genes_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "resources", "fusion_genes.csv")
     if os.path.exists(fusion_genes_path):
         try:
             df_fg = pd.read_csv(fusion_genes_path)

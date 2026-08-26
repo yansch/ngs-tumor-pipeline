@@ -1,29 +1,25 @@
 #!/bin/bash
-# ngs_tumor_pipeline.sh - Unified NGS Tumor Pipeline
+# ngs_tumor_pipeline.sh - NGS Tumor Pipeline Orchestrator
 # Usage: bash ngs_tumor_pipeline.sh <R1.fastq.gz> <R2.fastq.gz>
+#
+# This script is the thin orchestrator. All processing logic lives in
+# the individual component scripts under components/*/run_*.sh.
 
-# Source configuration
-if [ -z "$PROJECT_DIR" ]; then
-    # Determine project root from script location if not inherited (e.g., manual local run)
-    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${ARRIBA_VISUALIZATION_MODULES[@]}"
-    if [[ -f "$SCRIPT_DIR/config/common.sh" ]]; then
-        export PROJECT_DIR="$SCRIPT_DIR"
-    elif [[ -f "$SCRIPT_DIR/../config/common.sh" ]]; then
-        export PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-    else
-        echo "Error: Cannot locate project root (config/common.sh not found)."
-        exit 1
-    fi
-fi
+# ---------------------------------------------------------------------------
+# 0. Bootstrap: locate project root and load config
+# ---------------------------------------------------------------------------
+export PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
 source "$PROJECT_DIR/config/common.sh"
+source "$PROJECT_DIR/lib/common_functions.sh"
 
 START_TIME=$(date +%s)
-
-# Stop script execution on error
 set -eo pipefail
 trap 'echo "❌ Pipeline failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
-# Input Validation
+# ---------------------------------------------------------------------------
+# 1. Input validation
+# ---------------------------------------------------------------------------
 if [ "$#" -lt 2 ]; then
     echo "Error: Two input fastq.gz files are required."
     echo "Usage: bash $0 <R1.fastq.gz> <R2.fastq.gz>"
@@ -33,296 +29,179 @@ fi
 R1_PATH="$1"
 R2_PATH="$2"
 
-# --- Step 1: Bioinformatics (fastp, STAR, SAMtools, BWA-MEM2, Arriba) ---
-purge_modules
-load_modules "$FASTP_TOOLCHAIN_MODULE" "${FASTP_MODULES[@]}"
-
-# Resource Settings
+# ---------------------------------------------------------------------------
+# 2. Path & directory setup (shared across all component steps)
+# ---------------------------------------------------------------------------
 THREADS=${SLURM_CPUS_PER_TASK:-$PIPELINE_THREADS}
 
-# --- Path Setup ---
+# Split the Slurm CPU allocation across the concurrent heavy branches on Palma.
+# fastp still runs first with the full budget; only the downstream parallel
+# branches use the split allocation.
+if [ "$PIPELINE_HOST" = "palma" ]; then
+    STAR_THREADS=$(( THREADS / 2 ))
+    BWA_THREADS=$(( THREADS - STAR_THREADS ))
+    if [ "$STAR_THREADS" -lt 1 ]; then STAR_THREADS=1; fi
+    if [ "$BWA_THREADS" -lt 1 ]; then BWA_THREADS=1; fi
+fi
+
 R1_base=$(basename "$R1_PATH" .fastq.gz)
 R2_base=$(basename "$R2_PATH" .fastq.gz)
-CASE_LABEL="${R1_base%_R1_001}"
+export CASE_LABEL="${R1_base%_R1_001}"
 
-OUT_DIR="$RESULTS_BASE/${CASE_LABEL}"
-TMP_DIR="$SCRATCH_DIR/tmp/${CASE_LABEL}"
-CNV_DIR="$OUT_DIR/cnv"
-LOG_DIR="$OUT_DIR/log"
+export OUT_DIR="$RESULTS_BASE/${CASE_LABEL}"
+export TMP_DIR="$SCRATCH_DIR/tmp/${CASE_LABEL}"
+export CNV_DIR="$OUT_DIR/cnv"
+export METAGENOMICS_DIR="$OUT_DIR/metagenomics"
+export NONHUMAN_DIR="$METAGENOMICS_DIR/nonhuman_reads"
+export LOG_DIR="$OUT_DIR/log"
 
-BAM_FILE_ARRIBA="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.arriba.bam"
-BAM_FILE_CNV="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.cnv.bam"
+export BAM_FILE_ARRIBA="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.arriba.bam"
+export BAM_FILE_CNV="$TMP_DIR/${R1_base}_Aligned.sortedByCoord.out.cnv.bam"
 
-ARRIBA_OUT="$OUT_DIR/arriba/${R1_base}_fusions.tsv"
-FASTP_DIR="$OUT_DIR/fastp"
-R1_TRIMMED="$TMP_DIR/${R1_base}.trimmed.fq.gz"
-R2_TRIMMED="$TMP_DIR/${R2_base}.trimmed.fq.gz"
+export ARRIBA_OUT="$OUT_DIR/arriba/${R1_base}_fusions.tsv"
+export FASTP_DIR="$OUT_DIR/fastp"
+export R1_TRIMMED="$TMP_DIR/${R1_base}.trimmed.fq.gz"
+export R2_TRIMMED="$TMP_DIR/${R2_base}.trimmed.fq.gz"
+export FASTP_JSON="$FASTP_DIR/${R1_base}.fastp.json"
 
-# Dynamic CNV file definitions based directly on the CNV BAM file name
+# CNV file paths derived from the CNV BAM name
 CNV_BASE=$(basename "$BAM_FILE_CNV" .bam)
-CNR_FILE="$CNV_DIR/${CNV_BASE}.cnr"
-CNS_FILE="$CNV_DIR/${CNV_BASE}.cns"
+export CNR_FILE="$CNV_DIR/${CNV_BASE}.cnr"
+export CNS_FILE="$CNV_DIR/${CNV_BASE}.cns"
 
-# Create required directories
 mkdir -p "$TMP_DIR" "$CNV_DIR" "$OUT_DIR/arriba" "$OUT_DIR/fastp" "$LOG_DIR"
 
-echo "Starting ngs_tumor_pipeline for $CASE_LABEL on $(hostname)"
-echo "Using $THREADS threads"
+echo "═══════════════════════════════════════════════════════════════════════"
+echo "🧬 NGS Tumor Pipeline  |  Case: $CASE_LABEL"
+echo "   Host: $(hostname)   Threads: $THREADS"
+echo "═══════════════════════════════════════════════════════════════════════"
 
-FASTP_JSON="$FASTP_DIR/${R1_base}.fastp.json"
+# ---------------------------------------------------------------------------
+# 3. Step 01: Preprocessing (FASTQ trimming)
+# ---------------------------------------------------------------------------
+source "$PROJECT_DIR/components/01_fastp/run_fastp.sh"
 
-### fastp Preprocessing #######################################################
-if [[ ! -f "$R1_TRIMMED" || ! -f "$FASTP_JSON" ]]; then
-    echo "Running fastp preprocessing..."
-    fastp \
-        -i "$R1_PATH" -I "$R2_PATH" \
-        -o "$R1_TRIMMED" -O "$R2_TRIMMED" \
-        -p "$THREADS" \
-        --low_complexity_filter \
-        -h "$FASTP_DIR/${R1_base}.fastp.html" \
-        -j "$FASTP_JSON"
-fi
+if [ "$PIPELINE_HOST" = "palma" ]; then
+    echo ""
+    echo "⚡ Running downstream steps in parallel.."
 
-# Extract 'total_reads' from fastp.json
-if command -v jq &>/dev/null; then
-    TOTAL_READS=$(jq -r '.summary.before_filtering.total_reads' "$FASTP_JSON")
+    # Branch A: STAR alignment -> Arriba fusion detection
+    (
+        set -eo pipefail
+        THREADS="$STAR_THREADS"
+        export THREADS
+        source "$PROJECT_DIR/components/02_star/run_star.sh"
+        source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
+    ) &
+    PID_BRANCH_A=$!
+
+    # Branch B: BWA-MEM2 alignment -> CNVkit -> CNV plots & Coverage
+    (
+        set -eo pipefail
+        THREADS="$BWA_THREADS"
+        export THREADS
+        source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
+
+        # Switch to analysis env for CNV/coverage steps
+        purge_modules
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+        load_ngs_python_env
+        unset PYTHONPATH
+
+        source "$PROJECT_DIR/components/05_cnvkit/run_cnvkit.sh"
+
+        ( set -eo pipefail; source "$PROJECT_DIR/components/06_cnv_plots/run_cnv_plots.sh" ) &
+        PID_PLOTS=$!
+
+        ( set -eo pipefail; source "$PROJECT_DIR/components/07_coverage/run_coverage.sh" ) &
+        PID_COV=$!
+
+        wait $PID_PLOTS $PID_COV
+
+        source "$PROJECT_DIR/components/10_nonhuman_reads/run_nonhuman_reads.sh"
+    ) &
+    PID_BRANCH_B=$!
+
+    # Branch C: Variant filtering & OncoKB annotation
+    (
+        set -eo pipefail
+        purge_modules
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+        load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+        load_ngs_python_env
+        unset PYTHONPATH
+
+        source "$PROJECT_DIR/components/08_variants/run_variants.sh"
+        # Save exported VAR_ARG to state file in TMP_DIR
+        echo "export VAR_ARG=\"${VAR_ARG:-}\"" > "$TMP_DIR/variants_env.sh"
+    ) &
+    PID_BRANCH_C=$!
+
+    # Wait for all parallel branches to finish
+    wait $PID_BRANCH_A || { echo "❌ Branch (STAR + Arriba) failed." >&2; exit 1; }
+    wait $PID_BRANCH_B || { echo "❌ Branch (BWA + CNV + Coverage) failed." >&2; exit 1; }
+    wait $PID_BRANCH_C || { echo "❌ Variant branch failed." >&2; exit 1; }
+
+    # Activate analysis environment for final report
+    purge_modules
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+    load_ngs_python_env
+    unset PYTHONPATH
+
+    if [ -f "$TMP_DIR/variants_env.sh" ]; then
+        source "$TMP_DIR/variants_env.sh"
+    fi
+
+    source "$PROJECT_DIR/components/09_report/run_report.sh"
+
 else
-    TOTAL_READS=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['summary']['before_filtering']['total_reads'])" "$FASTP_JSON")
-fi
-echo "Total reads: $TOTAL_READS"
+    echo ""
+    echo "─── Sequential mode (Omen / local) ───────────────────────────────────"
+    source "$PROJECT_DIR/components/02_star/run_star.sh"
+    source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
+    source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
 
-### STAR Alignment for Arriba ################################################
-if [ ! -f "$BAM_FILE_ARRIBA" ]; then
-    echo "Running STAR alignment for Arriba (index: $STAR_INDEX)..."
-    rm -f "$TMP_DIR/star_tmp_arriba"*
+    # ---------------------------------------------------------------------------
+    # 4. Switch to analysis environment (Python + R)
+    #    This is a deliberate environment boundary between alignment and analysis.
+    # ---------------------------------------------------------------------------
     purge_modules
-    load_modules "$STAR_TOOLCHAIN_MODULE" "${STAR_MODULES[@]}" "${SAMTOOLS_MODULES[@]}"
-    STAR \
-        --runThreadN "$THREADS" \
-        --outFileNamePrefix "$TMP_DIR/arriba_" \
-        --genomeDir "$STAR_INDEX" --genomeLoad NoSharedMemory \
-        --readFilesIn "$R1_TRIMMED" "$R2_TRIMMED" --readFilesCommand zcat \
-        --outStd BAM_Unsorted --outSAMtype BAM Unsorted --outSAMunmapped Within --outBAMcompression 0 \
-        --outFilterMultimapNmax 50 --peOverlapNbasesMin 10 --alignSplicedMateMapLminOverLmate 0.5 --alignSJstitchMismatchNmax 5 -1 5 5 \
-        --chimSegmentMin 10 --chimOutType WithinBAM HardClip --chimJunctionOverhangMin 10 --chimScoreDropMax 30 --chimScoreJunctionNonGTAG 0 --chimScoreSeparation 1 --chimSegmentReadGapMax 3 --chimMultimapNmax 50 | \
-    samtools sort -@ "$THREADS" -m $((SORT_MEM_BASE/THREADS))M -T "$TMP_DIR/star_tmp_arriba" -O bam -o "$BAM_FILE_ARRIBA"
-    samtools index "$BAM_FILE_ARRIBA"
-fi
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+    load_ngs_python_env
+    unset PYTHONPATH
 
-### BWA-MEM2 Alignment for CNV #############################################
-if [ ! -f "$BAM_FILE_CNV" ]; then
-    echo "Running BWA-MEM2 alignment for CNV (reference: $REF_GENOME_CNV)..."
-    
-    # Load dedicated BWA environment from config (swaps to 2024a/GCC13)
+    echo ""
+    echo "─── Analysis environment ready ─────────────────────────────────────────"
+
+    # ---------------------------------------------------------------------------
+    # 5. Analysis steps (BAMs → results)
+    # ---------------------------------------------------------------------------
+    source "$PROJECT_DIR/components/05_cnvkit/run_cnvkit.sh"
+    source "$PROJECT_DIR/components/06_cnv_plots/run_cnv_plots.sh"
+    source "$PROJECT_DIR/components/07_coverage/run_coverage.sh"
+    source "$PROJECT_DIR/components/10_nonhuman_reads/run_nonhuman_reads.sh"
+
     purge_modules
-    load_modules "$BWA_TOOLCHAIN_MODULE" "${BWA_MODULES[@]}" "${SAMTOOLS_MODULES[@]}"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
+    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
+    load_ngs_python_env
+    unset PYTHONPATH
 
-    if ! command -v "$BWA_BIN" >/dev/null 2>&1; then
-        echo "Error: BWA/BWA-MEM2 binary not found (BWA_BIN=$BWA_BIN)." >&2
-        exit 1
-    fi
-    if [ ! -f "$REF_GENOME_CNV" ]; then
-        echo "Error: CNV reference file not found at $REF_GENOME_CNV." >&2
-        exit 1
-    fi
-
-    "$BWA_BIN" mem -t "$THREADS" "$REF_GENOME_CNV" "$R1_TRIMMED" "$R2_TRIMMED" | \
-    samtools sort -@ "$THREADS" -m $((SORT_MEM_BASE/THREADS))M -T "$TMP_DIR/bwa_tmp_cnv" -O bam -o "$BAM_FILE_CNV"
-    samtools index "$BAM_FILE_CNV"
+    source "$PROJECT_DIR/components/08_variants/run_variants.sh"
+    source "$PROJECT_DIR/components/09_report/run_report.sh"
 fi
 
-### Arriba Fusion Detection ############################################
-if [ ! -f "$ARRIBA_OUT" ]; then
-    echo "Running Arriba fusion detection..."
-    ARRIBA_BIN="arriba"
-    if [ -f "$ARRIBA_BASE/arriba" ]; then
-        ARRIBA_BIN="$ARRIBA_BASE/arriba"
-    fi
-
-    REF_GENOME_FOR_ARRIBA="${REF_GENOME_ARRIBA:-$REF_GENOME}"
-    ANNOTATION_GTF_FOR_ARRIBA="${ANNOTATION_GTF_ARRIBA:-$ANNOTATION_GTF}"
-
-    "$ARRIBA_BIN" \
-        -x "$BAM_FILE_ARRIBA" \
-        -o "$ARRIBA_OUT" \
-        -f intronic,in_vitro,internal_tandem_duplication \
-        -a "$REF_GENOME_FOR_ARRIBA" -g "$ANNOTATION_GTF_FOR_ARRIBA" -b "$ARRIBA_BLACKLIST" -k "$ARRIBA_KNOWN_FUSIONS" -t "$ARRIBA_TAGS" -p "$ARRIBA_PROTEIN_DOMAINS"
-
-    # Visualization
-    purge_modules
-    load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${ARRIBA_VISUALIZATION_MODULES[@]}"
-
-    DRAW_FUSIONS_R="draw_fusions.R"
-    if [ -f "$ARRIBA_BASE/draw_fusions.R" ]; then
-        DRAW_FUSIONS_R="$ARRIBA_BASE/draw_fusions.R"
-    elif [ -f "$BASE_DIR/bin/draw_fusions.R" ]; then
-        DRAW_FUSIONS_R="$BASE_DIR/bin/draw_fusions.R"
-    fi
-
-    "$DRAW_FUSIONS_R" \
-        --fusions="$ARRIBA_OUT" \
-        --alignments="$BAM_FILE_ARRIBA" \
-        --output="$OUT_DIR/arriba/${R1_base}_fusions.pdf" \
-        --annotation="$ANNOTATION_GTF" \
-        --cytobands="$ARRIBA_CYTOBANDS" \
-        --proteinDomains="$ARRIBA_PROTEIN_DOMAINS"
-
-    # Virus Expression (Omen feature)
-    QUANTIFY_VIRUS_SH="quantify_virus_expression.sh"
-    if [ -f "$ARRIBA_BASE/quantify_virus_expression.sh" ]; then
-        QUANTIFY_VIRUS_SH="$ARRIBA_BASE/quantify_virus_expression.sh"
-    elif [ -f "$BASE_DIR/bin/quantify_virus_expression.sh" ]; then
-        QUANTIFY_VIRUS_SH="$BASE_DIR/bin/quantify_virus_expression.sh"
-    fi
-
-    if command -v "$QUANTIFY_VIRUS_SH" &>/dev/null || [ -f "$QUANTIFY_VIRUS_SH" ]; then
-        echo "Quantifying virus expression..."
-        "$QUANTIFY_VIRUS_SH" "$BAM_FILE_ARRIBA" "$OUT_DIR/arriba/${R1_base}_virus_expression.tsv" || true
-    fi
-fi
-
-# --- Step 2: Downstream Analysis (CNVkit, Custom Visualizations, Reporting) ---
-purge_modules
-load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
-load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
-
-load_ngs_python_env
-unset PYTHONPATH
-
-echo "Starting analysis for $CASE_LABEL..."
-
-# Convert Arriba fusions TSV to Excel
-ARRIBA_XLSX="${ARRIBA_OUT%.tsv}.xlsx"
-if [ -f "$ARRIBA_OUT" ]; then
-    echo "Converting Arriba fusions TSV to Excel..."
-    python "$PROJECT_DIR/scripts/tsv_to_excel.py" "$ARRIBA_OUT" "$ARRIBA_XLSX"
-fi
-
-### CNV calling with CNVkit #################################################
-if [ ! -f "$CNS_FILE" ]; then
-    echo "Running CNVkit batch..."
-    # Using --processes 0 to prevent cluster semaphore allocation errors
-    cnvkit.py batch "$BAM_FILE_CNV" --reference "$CNV_REFERENCE" --processes 0 \
-        --drop-low-coverage --output-dir "$CNV_DIR" --diagram
-fi
-
-# CNVkit sex call
-if [ ! -f "$CNV_DIR/${R1_base}_sex.txt" ]; then
-    echo "Running CNVkit sex call..."
-    target_cnns=("$CNV_DIR"/*.targetcoverage.cnn)
-    antitarget_cnns=("$CNV_DIR"/*.antitargetcoverage.cnn)
-    if [ -f "${target_cnns[0]}" ] && [ -f "${antitarget_cnns[0]}" ]; then
-        cnvkit.py sex "$CNV_REFERENCE" "${target_cnns[0]}" "${antitarget_cnns[0]}" -o "$CNV_DIR/${R1_base}_sex.txt"
-    fi
-fi
-
-### CNV Scatter Plots #######################################################
-if [ ! -f "$CNV_DIR/${R1_base}_chrY.png" ]; then
-    if [ ! -s "$CNR_FILE" ] || [ ! -s "$CNS_FILE" ]; then
-        echo "⚠️  Missing CNVkit outputs ($CNR_FILE or $CNS_FILE). Skipping CNV scatter plots."
-    else
-        echo "Generating chromosome-wise CNV scatter plots..."
-        CNR_GENES=$(cut -f4 "$CNR_FILE" 2>/dev/null | sort -u)
-        if [ -z "$CNR_GENES" ]; then
-            echo "⚠️  No gene entries found in $CNR_FILE. Skipping CNV scatter plots."
-            CNR_GENES=""
-        fi
-
-        for chr in {1..22} X Y; do
-            chr_name="chr${chr}"
-            potential_genes=$(awk -F';' -v c="$chr_name" '$2 == c {print $1}' "$RELEVANT_GENES")
-            gene_list=""
-            for g in $potential_genes; do
-                if [ -n "$CNR_GENES" ] && echo "$CNR_GENES" | grep -qx "$g"; then
-                    gene_list="${gene_list}${g},"
-                fi
-            done
-            gene_list=${gene_list%,}
-
-            gene_args=""
-            if [ -n "$gene_list" ]; then
-                gene_args="-g $gene_list"
-            fi
-
-            echo "Plotting CNV scatter for ${chr_name}..."
-            cnvkit.py scatter "$CNR_FILE" \
-                -s "$CNS_FILE" \
-                -c "${chr_name}" \
-                --title "${chr_name}" \
-                --segment-color 'purple' \
-                $gene_args \
-                -o "$CNV_DIR/${R1_base}_chr${chr}.png" || :
-        done
-    fi
-fi
-
-### Custom Plots & Reporting ################################# Rhine-Westphalia ---
-
-# Purity Plots
-if [ ! -f "$OUT_DIR/cnv/cnv_plot_purity_0.1.png" ]; then
-    for p_int in {10..1}; do
-        purity=$(LC_NUMERIC=C awk -v p="$p_int" 'BEGIN {print p/10}')
-        fname=$( [ "$p_int" -eq 10 ] && echo "cnv_plot.png" || echo "cnv_plot_purity_${purity}.png" )
-        echo "Generating CNV plot for purity ${purity}..."
-        python "$PROJECT_DIR/scripts/plot_cnv_from_ngs.py" "$CNR_FILE" --case-id "${R1_base}" -o "$OUT_DIR/cnv" -f "$fname" --purity "$purity" -c "$CYTOBAND_TXT" -g "$RELEVANT_GENES" || :
-    done
-fi
-
-# Panel Coverage
-COVERAGE_DIR="$CNV_DIR/coverage"
-if [ ! -f "$COVERAGE_DIR/${R1_base}_panel_coverage.png" ]; then
-    mkdir -p "$COVERAGE_DIR"
-    echo "Generating Panel Coverage..."
-    python "$PROJECT_DIR/scripts/coverage_plot.py" \
-        "$PANEL_REGIONS" \
-        "$BAM_FILE_CNV" \
-        "$COVERAGE_DIR/${R1_base}_panel_coverage.png" \
-        "$COVERAGE_DIR/${R1_base}_panel_coverage.txt"
-fi
-
-### Variant Processing (Omen feature) ####################################################
-VARIANTS_JSON="${VARIANTS_SEARCH_DIR}/${CASE_LABEL}.json.gz"
-if [ ! -f "$VARIANTS_JSON" ]; then
-    VARIANTS_JSON="${VARIANTS_SEARCH_DIR}/${CASE_LABEL}.json"
-fi
-
-# Fallback search
-if [ ! -f "$VARIANTS_JSON" ]; then
-    echo "Searching for matching variant file in $VARIANTS_SEARCH_DIR..."
-    for f in "$VARIANTS_SEARCH_DIR"/*.hard-filtered.vcf.annotated.json*; do
-        [ -e "$f" ] || continue
-        fname=$(basename "$f")
-        prefix="${fname%%.hard-filtered*}"
-        if [[ "$CASE_LABEL" == *"$prefix"* ]]; then
-            echo "Found match by prefix: $prefix -> $fname"
-            VARIANTS_JSON="$f"
-            break
-        fi
-    done
-fi
-
-VARIANTS_DIR="$OUT_DIR/variants"
-mkdir -p "$VARIANTS_DIR"
-PROCESSED_VARS="$VARIANTS_DIR/${CASE_LABEL}_variants_processed.json"
-VAR_ARG=""
-
-if [ -f "$VARIANTS_JSON" ]; then
-    echo "Processing variants: $VARIANTS_JSON"
-    python "$PROJECT_DIR/scripts/ngs_variant_processor.py" "$VARIANTS_JSON" \
-        --ref-dir "$PROJECT_DIR/resources" \
-        -o "$PROCESSED_VARS"
-    VAR_ARG="--variants-json $PROCESSED_VARS"
-fi
-
-### Final PDF Report
-if [ ! -f "$OUT_DIR/${R1_base}_ngs_report.pdf" ] || [ -n "$VAR_ARG" ]; then
-    echo "Generating Final PDF Report..."
-    python "$PROJECT_DIR/scripts/ngs_report.py" "$OUT_DIR" "${R1_base}" $VAR_ARG
-fi
-
+# ---------------------------------------------------------------------------
+# 6. Summary
+# ---------------------------------------------------------------------------
 END_TIME=$(date +%s)
-DURATION=$((END_TIME - START_TIME))
-echo "-------------------------------------------------------"
+DURATION=$(( END_TIME - START_TIME ))
+echo ""
+echo "═══════════════════════════════════════════════════════════════════════"
 echo "✅ Pipeline finished for ${CASE_LABEL}"
-echo "⏱️ Elapsed time: $(printf '%02d:%02d:%02d' $((DURATION/3600)) $((DURATION%3600/60)) $((DURATION%60)))"
-echo "-------------------------------------------------------"
+echo "⏱️  Elapsed: $(printf '%02d:%02d:%02d' $(( DURATION/3600 )) $(( DURATION%3600/60 )) $(( DURATION%60 )))"
+echo "📂 Results: $OUT_DIR"
+echo "═══════════════════════════════════════════════════════════════════════"
