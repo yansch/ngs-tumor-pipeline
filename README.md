@@ -47,48 +47,59 @@ Run the orchestrator script. It will scan your input folder and automatically su
 bash run.sh
 ```
 
-**Optional: Dry Run**
-To see what the pipeline *would* do without actually starting any jobs, use:
+On launch, `run.sh` checks if remote updates are available on `origin/main`. If new commits exist, it prints the recent commit messages and interactively asks if you wish to update (`[y/N]`).
+*(Note: Confirming the update executes `git reset --hard origin/main` to sync with remote, discarding uncommitted local changes.)*
+
+---
+
+### Optional Flags & Options
+
+**Filter Specific Cases:**
+Analyze only cases matching a specific identifier/substring without clearing existing outputs:
+
+```bash
+bash run.sh --only <case_id>
+```
+
+**Dry Run:**
+See what the pipeline *would* do without actually submitting any jobs:
 
 ```bash
 bash run.sh --dry-run
 ```
 
-**Optional: Preserve Existing Outputs**
-By default, `run.sh` clears the pipeline tmp and output directories before starting a new run. To keep previous results, pass:
+**Preserve Existing Outputs:**
+By default, `run.sh` clears pipeline tmp and output directories before starting a new batch. Pass `--keep-existing` to keep previous results:
 
 ```bash
 bash run.sh --keep-existing
 ```
 
-**Optional: Skip Active File Transfer Check**
-By default, `run.sh` checks if a file transfer into the input folder is ongoing and waits for the folder size to stabilize (`WAIT_TIME` minutes per check, 2m on Omen, 5m on Palma). Pass `--now` to skip this check and start execution immediately:
+**Skip File Transfer & Update Checks:**
+By default, `run.sh` checks for remote updates and verifies that input file transfers have completed (`WAIT_TIME` minutes per check, 2m on Omen, 5m on Palma). Pass `--now` to skip these checks and start immediately:
 
 ```bash
 bash run.sh --now
 ```
 
-**Optional: Override Configuration Values**
-You can override host config values at runtime:
+**Override Configuration Values:**
+You can override configuration variables at runtime without editing config files:
 
 ```bash
 # Scalar overrides from CLI (repeat --set as needed)
 bash run.sh --set PIPELINE_THREADS=32 --set RESULTS_BASE=/scratch/tmp/$USER/ngs-output
-```
 
-```bash
 # File-based overrides (recommended for arrays/modules)
 bash run.sh --overrides-file /path/to/my-overrides.sh
 ```
 
-Override precedence is:
-
+Override precedence:
 1. Host defaults (`config/omen.sh` or `config/palma.sh`)
 2. `.env` (if present in project root)
 3. `--overrides-file`
 4. `--set`
 
-Use `bash run.sh --help` to see all options.
+Use `bash run.sh --help` to see all available CLI options.
 
 ---
 
@@ -96,8 +107,8 @@ Use `bash run.sh --help` to see all options.
 
 * **Inputs:** Put FASTQ and VCF files into the subfolder `input`.
 * **Outputs:** Results will be generated in the subfolder `output`.
-* Scripts and dependencies are stored in the directories `scripts` and `env`, respectively.
-* Shared genome and annotation references on Palma are located under `/cloud/wwu1/e_np_ngs/`.
+* **Components:** Individual analysis steps are located in modular scripts under `components/01_fastp` through `components/10_nonhuman_reads`.
+* **Shared References:** Shared genome and annotation references on Palma are located under `/cloud/wwu1/e_np_ngs/references/`.
 
 ## 🆘 Troubleshooting
 

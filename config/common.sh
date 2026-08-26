@@ -90,3 +90,61 @@ load_ngs_python_env() {
         exit 1
     fi
 }
+
+# --- UI & Update Helpers ---
+
+# Layout helper (defaults to '-', takes any character; adjusts dynamically to terminal width)
+layout() {
+    local width char
+    width=$(tput cols 2>/dev/null || echo 80)
+    char=${1:--}
+    printf "%${width}s\n" | tr ' ' "$char"
+}
+
+update_check() {
+    # Only run in interactive terminal
+    if [ ! -t 0 ]; then
+        return 0
+    fi
+
+    echo "🔍 Checking for updates from origin/main..."
+    git fetch --quiet 2>/dev/null || true
+    local BEHIND
+    BEHIND=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+
+    if [ "$BEHIND" -gt 0 ]; then
+        if [ "$BEHIND" -eq 1 ]; then
+            echo -e "\n📦 There is $BEHIND new update available."
+        else
+            echo -e "\n📦 There are $BEHIND new updates available."
+        fi
+        if [ "$BEHIND" -lt 5 ]; then
+            echo "   Consider updating."
+        else
+            echo "   Your pipeline version is outdated. Please update!"
+        fi
+
+        layout '='
+        echo "Update Messages:"
+        git log -"$BEHIND" --format="%h %s (%cd)" --date=short origin/main
+        layout '='
+
+        echo -e "\n⚠️  WARNING: Updating will discard any local changes that you made to the pipeline."
+        echo "   If you have not changed any code here, you can safely proceed."
+        read -rp "Do you want to update now? [y/N] " answer
+        case "${answer,,}" in
+            y|yes)
+                echo "Updating repository to origin/main..."
+                git reset --hard origin/main
+                git pull
+                echo "✅ Pipeline updated successfully. Please re-run your command."
+                exit 0
+                ;;
+            *)
+                echo "Skipping update."
+                ;;
+        esac
+    else
+        echo -e "✅ Pipeline is up to date!\n"
+    fi
+}
