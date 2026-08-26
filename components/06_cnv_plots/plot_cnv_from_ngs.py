@@ -725,7 +725,7 @@ def main():
             for _, row in sorted_reps.iterrows():
                 gene = row["gene"]
                 log2_val = row["log2"]
-                if log2_val >= 1.5:
+                if log2_val >= 3.0:
                     amplifications.append({"gene": gene, "log2": round(float(log2_val), 2)})
                 elif _is_cdkn2ab(gene):
                     if log2_val < -2.0:

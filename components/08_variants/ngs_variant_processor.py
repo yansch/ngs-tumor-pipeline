@@ -100,15 +100,36 @@ def apply_filter_profile(profile):
     ALWAYS_EXCLUDED_CSQ = set(profile.get("always_excluded_csq", []))
     TERT_HOTSPOTS = dict(profile.get("tert_hotspots", {}))
 
+def is_clinvar_benign(variant):
+    clinvar_entries = variant.get("clinvar")
+    if not isinstance(clinvar_entries, list) or not clinvar_entries:
+        return False
+    
+    significances = set()
+    for entry in clinvar_entries:
+        sigs = entry.get("significance", [])
+        if isinstance(sigs, list):
+            for s in sigs:
+                if isinstance(s, str):
+                    significances.add(s.strip().lower())
+        elif isinstance(sigs, str):
+            significances.add(sigs.strip().lower())
+            
+    has_benign = any(s in ("benign", "likely benign") or "benign" in s for s in significances if "pathogenic" not in s)
+    has_pathogenic = any("pathogenic" in s for s in significances)
+    
+    return has_benign and not has_pathogenic
+
 def get_popmax(v):
     af_values = []
-    if "gnomad" in v and v["gnomad"].get("allAf") is not None:
-        af_values.append(v["gnomad"]["allAf"])
-    if "oneKg" in v and v["oneKg"].get("allAf") is not None:
-        af_values.append(v["oneKg"]["allAf"])
-    if "esp" in v and v["esp"].get("allAf") is not None:
-        af_values.append(v["esp"]["allAf"])
+    for db_key in ("gnomad", "oneKg", "esp", "topmed", "gmeVariome"):
+        db = v.get(db_key)
+        if isinstance(db, dict):
+            for k, val in db.items():
+                if (k.endswith("Af") or k.lower() in ("af", "popmax", "afpopmax", "popmaxaf") or k.endswith("_af")) and isinstance(val, (int, float)):
+                    af_values.append(val)
     return max(af_values) if af_values else None
+
 
 def convert_aa_3to1(hgvsp):
     if not hgvsp:
@@ -352,6 +373,13 @@ def process_annotation_file(file_path, comment_map, filter_profile=None):
         for vi, variant in enumerate(pos.get("variants", [])):
             vaf = v_freqs[vi] if vi < len(v_freqs) else None
             pm = get_popmax(variant)
+            max_pm = filter_profile.get("max_popmax", 0.01)
+
+            # Filter out ClinVar benign / likely benign and variants with AF Popmax > 1%
+            if is_clinvar_benign(variant):
+                continue
+            if pm is not None and pm > max_pm:
+                continue
 
             vid = variant.get("vid", "")
             
