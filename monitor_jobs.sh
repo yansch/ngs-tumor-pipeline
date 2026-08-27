@@ -79,11 +79,17 @@ render_status() {
 
     ACTIVE_JOB_IDS=()
     local total_active=0
+    local example_id=""
+    local example_case=""
     if [ -n "$ACTIVE_JOBS" ]; then
         while IFS='|' read -r id name state time start extra; do
             if [ -n "$id" ]; then
                 ACTIVE_JOB_IDS+=("$id")
                 total_active=$(( total_active + 1 ))
+                if [ -z "$example_id" ]; then
+                    example_id="$id"
+                    example_case="${name#NGS_}"
+                fi
             fi
         done <<< "$ACTIVE_JOBS"
     fi
@@ -111,34 +117,12 @@ render_status() {
 
     local total_history=${#FILTERED_HISTORY_LINES[@]}
 
-    # --- 3. Collect Log Directories ---
-    CASES=()
-    if [ -d "$RESULTS_BASE" ]; then
-        while IFS= read -r dir; do
-            [ -n "$dir" ] && CASES+=("$(basename "$(dirname "$dir")")")
-        done < <(find "$RESULTS_BASE" -mindepth 2 -maxdepth 2 -type d -name "log" 2>/dev/null || true)
-    fi
-
-    if [ -n "$ACTIVE_JOBS" ]; then
-        while IFS='|' read -r id name state time start extra; do
-            case_label="${name#NGS_}"
-            [ -n "$case_label" ] && CASES+=("$case_label")
-        done <<< "$ACTIVE_JOBS"
-    fi
-
-    UNIQUE_CASES_ARRAY=()
-    while read -r case_id; do
-        [ -n "$case_id" ] && UNIQUE_CASES_ARRAY+=("$case_id")
-    done < <(printf "%s\n" "${CASES[@]}" 2>/dev/null | grep -v '^$' | sort -u || true)
-
-    local total_cases=${#UNIQUE_CASES_ARRAY[@]}
-
-    # --- 4. Dynamic Line & Layout Budget Calculation ---
+    # --- 3. Dynamic Line & Layout Budget Calculation ---
     # Header: 3 lines
     # Footer: 4 lines (if loop) or 3 lines (if --once)
     # Active section overhead: 3 lines (title + table header / empty msg + blank line)
     # History section overhead: 3 lines (title + table header / empty msg + blank line)
-    # Log Access overhead: 5 lines (title + table header + blank line + 2 instruction lines) if total_cases > 0, else 2 lines
+    # Log Access hint: 3 lines (title + path + example)
     # Safety buffer: 1 line
 
     local header_lines=3
@@ -147,8 +131,7 @@ render_status() {
 
     local active_base=3
     local history_base=3
-    local log_base=2
-    [ "$total_cases" -gt 0 ] && log_base=5
+    local log_base=3
 
     local fixed_overhead=$(( header_lines + footer_lines + active_base + history_base + log_base + 1 ))
     local avail_rows=$(( term_lines - fixed_overhead ))
@@ -170,67 +153,18 @@ render_status() {
 
     [ "$avail_rows" -lt 1 ] && avail_rows=1
 
-    # Allocate remaining rows between History and Log Access
+    # Allocate remaining rows for History
     local max_history_items=0
-    local max_log_items=0
-
-    if [ "$total_history" -eq 0 ] && [ "$total_cases" -eq 0 ]; then
-        max_history_items=0
-        max_log_items=0
-    elif [ "$total_history" -eq 0 ]; then
-        if [ "$total_cases" -le "$avail_rows" ]; then
-            max_log_items=$total_cases
-        else
-            max_log_items=$(( avail_rows - 1 )) # 1 line for overflow note
-            [ "$max_log_items" -lt 1 ] && max_log_items=1
-        fi
-    elif [ "$total_cases" -eq 0 ]; then
+    if [ "$total_history" -gt 0 ]; then
         if [ "$total_history" -le "$avail_rows" ]; then
             max_history_items=$total_history
         else
             max_history_items=$(( avail_rows - 1 )) # 1 line for overflow note
             [ "$max_history_items" -lt 1 ] && max_history_items=1
         fi
-    else
-        # Both history and cases exist
-        if [ $(( total_history + total_cases )) -le "$avail_rows" ]; then
-            max_history_items=$total_history
-            max_log_items=$total_cases
-        else
-            local half_1=$(( avail_rows / 2 ))
-            local half_2=$(( avail_rows - half_1 ))
-            [ "$half_1" -lt 1 ] && half_1=1
-            [ "$half_2" -lt 1 ] && half_2=1
-
-            if [ "$total_history" -le "$half_1" ]; then
-                max_history_items=$total_history
-                local rem_for_logs=$(( avail_rows - max_history_items ))
-                if [ "$total_cases" -le "$rem_for_logs" ]; then
-                    max_log_items=$total_cases
-                else
-                    max_log_items=$(( rem_for_logs - 1 ))
-                    [ "$max_log_items" -lt 1 ] && max_log_items=1
-                fi
-            elif [ "$total_cases" -le "$half_2" ]; then
-                max_log_items=$total_cases
-                local rem_for_hist=$(( avail_rows - max_log_items ))
-                if [ "$total_history" -le "$rem_for_hist" ]; then
-                    max_history_items=$total_history
-                else
-                    max_history_items=$(( rem_for_hist - 1 ))
-                    [ "$max_history_items" -lt 1 ] && max_history_items=1
-                fi
-            else
-                # Both exceed their share
-                max_history_items=$(( half_1 - 1 ))
-                max_log_items=$(( half_2 - 1 ))
-                [ "$max_history_items" -lt 1 ] && max_history_items=1
-                [ "$max_log_items" -lt 1 ] && max_log_items=1
-            fi
-        fi
     fi
 
-    # --- 5. Render Screen Output ---
+    # --- 4. Render Screen Output ---
     echo "-------------------------------------------------------"
     echo "🔍 NGS Pipeline Status for user: $USER"
     echo "-------------------------------------------------------"
@@ -290,26 +224,11 @@ render_status() {
     echo ""
 
     echo "📄 LOG ACCESS"
-    if [ "$total_cases" -eq 0 ]; then
-        echo "    No log directories found under $RESULTS_BASE"
+    echo "    Path:    $RESULTS_BASE/<CASE_ID>/log/"
+    if [ -n "$example_id" ] && [ -n "$example_case" ]; then
+        echo "    Example: tail -f $RESULTS_BASE/${example_case}/log/${example_id}_*.out"
     else
-        printf "    %-32s %-s\n" "CASE ID" "ABSOLUTE LOG PATH"
-        local case_count=0
-        for case_id in "${UNIQUE_CASES_ARRAY[@]}"; do
-            if [ "$case_count" -ge "$max_log_items" ]; then
-                local remaining_case_count=$(( total_cases - case_count ))
-                echo "    ... and $remaining_case_count more case log path(s)"
-                break
-            fi
-            log_dir="$RESULTS_BASE/$case_id/log"
-            abs_path=$(realpath "$log_dir" 2>/dev/null || echo "$log_dir")
-            printf "    %-32s %-s\n" "$case_id" "$abs_path"
-            case_count=$(( case_count + 1 ))
-        done
-
-        echo ""
-        echo "    To view a desired log using tail -f:"
-        echo "    tail -f <ABSOLUTE_LOG_PATH>/[JOBID]_*.out"
+        echo "    Example: tail -f $RESULTS_BASE/<CASE_ID>/log/<JOBID>_*.out"
     fi
 
     echo "-------------------------------------------------------"
