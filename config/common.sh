@@ -125,13 +125,19 @@ update_check() {
         fi
 
         layout '='
-        echo "Update Messages:"
-        git log -"$BEHIND" --format="%h %s (%cd)" --date=short origin/main
+        # show $behind amount of commit messages:
+        if [ "$BEHIND" -gt 10 ];then
+            echo "Update Messages (showing 10 of $BEHIND)"
+            git log -10 --format="%h %s" origin/main #showing more breaks the terminal
+        else
+            echo "Update Messages"
+            git log -"$BEHIND" --format="%h %s" origin/main
+        fi
         layout '='
 
         echo -e "\n⚠️  WARNING: Updating will discard any local changes that you made to the pipeline."
         echo "   If you have not changed any code here, you can safely proceed."
-        read -rp "Do you want to update now? [y/N] " answer
+        read -rp "Do you want to update now? [y/n] " answer
         case "${answer,,}" in
             y|yes)
                 echo "Updating repository to origin/main..."
