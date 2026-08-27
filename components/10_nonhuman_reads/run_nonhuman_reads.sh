@@ -37,7 +37,7 @@ fi
 
 require_vars BOWTIE_INDEX BOWTIE2_BIN
 
-if [ ! -f "$BOWTIE_INDEX.1.bt2" ]; then
+if [ ! -f "$BOWTIE_INDEX.1.bt2" ] && [ ! -f "$BOWTIE_INDEX.1.bt2l" ]; then
     echo "❌ Bowtie2 index not found: $BOWTIE_INDEX" >&2
     echo "   Set BOWTIE_INDEX in your host config or .env file before running metagenomics cases." >&2
     exit 1

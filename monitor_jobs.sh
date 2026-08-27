@@ -11,7 +11,7 @@ if [ "$PIPELINE_HOST" != "palma" ]; then
     exit 1
 fi
 
-INTERVAL=10
+INTERVAL=30
 ONCE=false
 
 while [[ $# -gt 0 ]]; do
@@ -68,14 +68,44 @@ estimate_remaining_time() {
 render_status() {
     [ "$ONCE" = false ] && printf "\033[H\033[2J"
 
+    local term_lines
+    term_lines=$(tput lines 2>/dev/null || echo "${LINES:-24}")
+    if [[ ! "$term_lines" =~ ^[0-9]+$ ]] || [ "$term_lines" -lt 10 ]; then
+        term_lines=24
+    fi
+
+    # Header: 3 lines (dashes + title + dashes)
+    # Active jobs overhead: 2 lines (section title + empty line separator)
+    # Active jobs header/empty msg: 1 line (table header or "No active jobs...")
+    # History overhead: 2 lines (section title + empty line separator)
+    # Log access overhead: 1 line (section title)
+    # Footer: 3 lines (dashes + tip/refresh info + dashes) + 1 safety margin
+    # Base overhead ≈ 12 lines
+    local base_overhead=12
+
+    # --- 1. Active Queue Status ---
+    ACTIVE_JOBS=$(squeue -u "$USER" -o "%i|%j|%T|%M|%S|%R" --noheader | grep "NGS_" || true)
+
+    local active_rows=0
+    if [ -n "$ACTIVE_JOBS" ]; then
+        active_rows=$(echo "$ACTIVE_JOBS" | wc -l)
+    fi
+
+    # Calculate remaining lines for History and Log Access tables
+    local remaining_space=$(( term_lines - base_overhead - active_rows ))
+    [ "$remaining_space" -lt 4 ] && remaining_space=4
+
+    # Split remaining space roughly equally between History and Log Access
+    local max_history_items=$(( remaining_space / 2 ))
+    local max_log_items=$(( remaining_space - max_history_items ))
+    [ "$max_history_items" -lt 2 ] && max_history_items=2
+    [ "$max_log_items" -lt 2 ] && max_log_items=2
+
     echo "-------------------------------------------------------"
     echo "🔍 NGS Pipeline Status for user: $USER"
     echo "-------------------------------------------------------"
 
-    # --- 1. Active Queue Status ---
     echo "👩🏼‍🔬  ACTIVE JOBS (squeue)"
-    ACTIVE_JOBS=$(squeue -u "$USER" -o "%i|%j|%T|%M|%S|%R" --noheader | grep "NGS_" || true)
-
     if [ -z "$ACTIVE_JOBS" ]; then
         echo "    No active NGS jobs found in the queue."
     else
@@ -121,11 +151,19 @@ render_status() {
         FILTERED_HISTORY_LINES+=("$line")
     done <<< "$HISTORY"
 
-    if [ ${#FILTERED_HISTORY_LINES[@]} -eq 0 ]; then
+    local total_history=${#FILTERED_HISTORY_LINES[@]}
+    if [ "$total_history" -eq 0 ]; then
         echo "    No NGS job history found for the last 24 hours."
     else
         printf "    %-10s %-25s %-15s %-10s\n" "JOBID" "CASE" "STATE" "EXIT"
+        local history_count=0
         for line in "${FILTERED_HISTORY_LINES[@]}"; do
+            if [ "$history_count" -ge "$max_history_items" ]; then
+                local remaining_count=$(( total_history - history_count ))
+                echo "    ... and $remaining_count more past job(s)"
+                break
+            fi
+
             read -r id name state exitcode <<< "$line"
 
             # Mark failures with a cross
@@ -138,6 +176,7 @@ render_status() {
             [[ "$state" == "COMPLETED"* ]] && STATUS_ICON="✅"
 
             printf "    %-10s %-25s %-15s %-10s %s\n" "$id" "$name" "$state" "$exitcode" "$STATUS_ICON"
+            history_count=$(( history_count + 1 ))
         done
     fi
 
@@ -160,17 +199,28 @@ render_status() {
         done <<< "$ACTIVE_JOBS"
     fi
 
-    UNIQUE_CASES=$(printf "%s\n" "${CASES[@]}" 2>/dev/null | grep -v '^$' | sort -u || true)
+    UNIQUE_CASES_ARRAY=()
+    while read -r case_id; do
+        [ -n "$case_id" ] && UNIQUE_CASES_ARRAY+=("$case_id")
+    done < <(printf "%s\n" "${CASES[@]}" 2>/dev/null | grep -v '^$' | sort -u || true)
 
-    if [ -z "$UNIQUE_CASES" ]; then
+    local total_cases=${#UNIQUE_CASES_ARRAY[@]}
+    if [ "$total_cases" -eq 0 ]; then
         echo "    No log directories found under $RESULTS_BASE"
     else
         printf "    %-20s %-s\n" "CASE ID" "ABSOLUTE LOG PATH"
-        while read -r case_id; do
+        local case_count=0
+        for case_id in "${UNIQUE_CASES_ARRAY[@]}"; do
+            if [ "$case_count" -ge "$max_log_items" ]; then
+                local remaining_case_count=$(( total_cases - case_count ))
+                echo "    ... and $remaining_case_count more case log path(s)"
+                break
+            fi
             log_dir="$RESULTS_BASE/$case_id/log"
             abs_path=$(realpath "$log_dir" 2>/dev/null || echo "$log_dir")
             printf "    %-20s %-s\n" "$case_id" "$abs_path"
-        done <<< "$UNIQUE_CASES"
+            case_count=$(( case_count + 1 ))
+        done
 
         echo ""
         echo "    To view a desired log using tail -f:"
