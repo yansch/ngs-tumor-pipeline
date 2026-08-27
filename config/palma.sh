@@ -69,7 +69,7 @@ export PIPELINE_THREADS=32
 export PIPELINE_MEM="80G"
 export PIPELINE_PARTITION="normal"
 export SORT_MEM_BASE=20000
-export WAIT_TIME=5 # in minutes
+export FILE_TRANSFER_WAIT_TIME=2 # in minutes
 
 # --- Slurm Runtime Estimation ---
 export PIPELINE_TIME_FACTOR=1896   # seconds per GB (empirical, NovaseqX data)

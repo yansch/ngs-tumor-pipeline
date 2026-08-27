@@ -211,6 +211,7 @@ render_status() {
             STATUS_ICON="❓"
             [[ "$state" == "FAILED"* ]] && STATUS_ICON="❌"
             [[ "$state" == "TIMEOUT"* ]] && STATUS_ICON="❌"
+            [[ "$state" == "OUT_OF_MEMORY"* ]] && STATUS_ICON="❌"
             [[ "$state" == "CANCELLED"* ]] && STATUS_ICON="🛑"
             [[ "$state" == "RUNNING" ]] && STATUS_ICON="⚙️ "
             [[ "$state" == "PENDING"* ]] && STATUS_ICON="⏳"

@@ -44,7 +44,7 @@ export BOWTIE_INDEX="$REF_BASE/metagenomics/bowtie_index/chm13v2.0"
 export PIPELINE_THREADS=32
 export PIPELINE_MEM="64G"
 export SORT_MEM_BASE=20000
-export WAIT_TIME=2 # in minutes
+export FILE_TRANSFER_WAIT_TIME=2 # in minutes
 
 # --- Runtime & Output Paths ---
 export SCRATCH_DIR="/data/ngs-tumor-pipeline"

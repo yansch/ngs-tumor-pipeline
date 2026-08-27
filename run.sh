@@ -209,9 +209,9 @@ if [ "$NOW" = false ] && [ "$DRY_RUN" = false ]; then
         du -sb "$INPUT_DIR" 2>/dev/null | awk '{print $1}'
     }
 
-    wait_minutes="${WAIT_TIME:-5}"
+    wait_minutes="${FILE_TRANSFER_WAIT_TIME:-2}"
     if [ -z "$wait_minutes" ] || [ "$wait_minutes" -eq 0 ]; then
-        wait_minutes=5
+        wait_minutes=2
     fi
     SLEEPTIMER=$(echo "scale=0; $wait_minutes * 60" | bc)
     PREV_SIZE=$(GET_SIZE)
