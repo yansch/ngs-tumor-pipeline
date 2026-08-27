@@ -34,15 +34,9 @@ R2_PATH="$2"
 # ---------------------------------------------------------------------------
 THREADS=${SLURM_CPUS_PER_TASK:-$PIPELINE_THREADS}
 
-# Split the Slurm CPU allocation across the concurrent heavy branches on Palma.
-# fastp still runs first with the full budget; only the downstream parallel
-# branches use the split allocation.
-if [ "$PIPELINE_HOST" = "palma" ]; then
-    STAR_THREADS=$(( THREADS / 2 ))
-    BWA_THREADS=$(( THREADS - STAR_THREADS ))
-    if [ "$STAR_THREADS" -lt 1 ]; then STAR_THREADS=1; fi
-    if [ "$BWA_THREADS" -lt 1 ]; then BWA_THREADS=1; fi
-fi
+# No thread splitting needed: STAR and BWA-MEM2 run sequentially on Palma
+# so each gets the full CPU budget. Only the lightweight downstream steps
+# (Arriba, CNVkit-chain, Variants) are parallelized.
 
 R1_base=$(basename "$R1_PATH" .fastq.gz)
 R2_base=$(basename "$R2_PATH" .fastq.gz)
@@ -83,26 +77,27 @@ source "$PROJECT_DIR/components/01_fastp/run_fastp.sh"
 
 if [ "$PIPELINE_HOST" = "palma" ]; then
     echo ""
-    echo "⚡ Running downstream steps in parallel.."
+    echo "─── Alignment (sequential) ──────────────────────────────────────────"
+    # STAR and BWA-MEM2 run one after the other with the full thread budget.
+    # Running them in parallel would push peak RAM to ~85 GB, exceeding the
+    # 80 GB Slurm allocation. The time saving (~2-4 min) is not worth the
+    # OOM risk.
+    source "$PROJECT_DIR/components/02_star/run_star.sh"
+    source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
 
-    # Branch A: STAR alignment -> Arriba fusion detection
+    echo ""
+    echo "⚡ Running downstream analysis steps in parallel.."
+
+    # Branch A: Arriba fusion detection (uses STAR BAM, already done)
     (
         set -eo pipefail
-        THREADS="$STAR_THREADS"
-        export THREADS
-        source "$PROJECT_DIR/components/02_star/run_star.sh"
         source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
     ) &
     PID_BRANCH_A=$!
 
-    # Branch B: BWA-MEM2 alignment -> CNVkit -> CNV plots & Coverage
+    # Branch B: CNVkit -> CNV plots & Coverage -> Metagenomics (uses BWA BAM, already done)
     (
         set -eo pipefail
-        THREADS="$BWA_THREADS"
-        export THREADS
-        source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
-
-        # Switch to analysis env for CNV/coverage steps
         purge_modules
         load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
         load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${R_BIOCONDUCTOR_MODULES[@]}"
@@ -123,7 +118,7 @@ if [ "$PIPELINE_HOST" = "palma" ]; then
     ) &
     PID_BRANCH_B=$!
 
-    # Branch C: Variant filtering & OncoKB annotation
+    # Branch C: Variant filtering & OncoKB annotation (independent)
     (
         set -eo pipefail
         purge_modules
@@ -139,8 +134,8 @@ if [ "$PIPELINE_HOST" = "palma" ]; then
     PID_BRANCH_C=$!
 
     # Wait for all parallel branches to finish
-    wait $PID_BRANCH_A || { echo "❌ Branch (STAR + Arriba) failed." >&2; exit 1; }
-    wait $PID_BRANCH_B || { echo "❌ Branch (BWA + CNV + Coverage) failed." >&2; exit 1; }
+    wait $PID_BRANCH_A || { echo "❌ Branch (Arriba) failed." >&2; exit 1; }
+    wait $PID_BRANCH_B || { echo "❌ Branch (CNV + Coverage) failed." >&2; exit 1; }
     wait $PID_BRANCH_C || { echo "❌ Variant branch failed." >&2; exit 1; }
 
     # Activate analysis environment for final report

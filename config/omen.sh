@@ -41,8 +41,8 @@ export PANEL_REGIONS="$CNV_REF_DIR/panel_v4.1_hg19.csv"
 export BOWTIE_INDEX="$REF_BASE/metagenomics/bowtie_index/chm13v2.0"
 
 # --- Resource Allocation ---
-export PIPELINE_THREADS=24
-export PIPELINE_MEM="86G"
+export PIPELINE_THREADS=32
+export PIPELINE_MEM="64G"
 export SORT_MEM_BASE=20000
 export WAIT_TIME=2 # in minutes
 
