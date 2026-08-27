@@ -109,13 +109,13 @@ render_status() {
     if [ -z "$ACTIVE_JOBS" ]; then
         echo "    No active NGS jobs found in the queue."
     else
-        printf "    %-10s %-20s %-10s %-10s %-10s %-s\n" "JOBID" "CASE" "STATE" "TIME" "REMAINING" "NODE/REASON"
+        printf "    %-10s %-50s %-10s %-10s %-10s %-s\n" "JOBID" "CASE" "STATE" "TIME" "REMAINING" "NODE/REASON"
         while IFS='|' read -r id name state time start extra; do
             remaining_time="N/A"
             if [[ "$state" == "RUNNING" && "$start" != "N/A" && "$start" != "Unknown" ]]; then
                 remaining_time=$(estimate_remaining_time "$name" "$start")
             fi
-            printf "    %-10s %-20s %-10s %-10s %-10s %-s\n" "$id" "$name" "$state" "$time" "$remaining_time" "$extra"
+            printf "    %-10s %-50s %-10s %-10s %-10s %-s\n" "$id" "$name" "$state" "$time" "$remaining_time" "$extra"
         done <<< "$ACTIVE_JOBS"
     fi
 
@@ -124,7 +124,7 @@ render_status() {
     # --- 2. Recent History ---
     echo "⌛ RECENT HISTORY (Last 24h)"
     # Filtering for main jobs (ignoring .batch/.extern steps)
-    HISTORY=$(sacct -u "$USER" -S $(date -d "24 hours ago" +%Y-%m-%dT%H:%M) --format="JobID,JobName%25,State,ExitCode" --noheader | grep "NGS_" | grep -v "\." || true)
+    HISTORY=$(sacct -u "$USER" -S $(date -d "24 hours ago" +%Y-%m-%dT%H:%M) --format="JobID,JobName%50,State,ExitCode" --noheader | grep "NGS_" | grep -v "\." || true)
 
     ACTIVE_JOB_IDS=()
     if [ -n "$ACTIVE_JOBS" ]; then
@@ -155,7 +155,7 @@ render_status() {
     if [ "$total_history" -eq 0 ]; then
         echo "    No NGS job history found for the last 24 hours."
     else
-        printf "    %-10s %-25s %-15s %-10s\n" "JOBID" "CASE" "STATE" "EXIT"
+        printf "    %-10s %-50s %-15s %-10s\n" "JOBID" "CASE" "STATE" "EXIT"
         local history_count=0
         for line in "${FILTERED_HISTORY_LINES[@]}"; do
             if [ "$history_count" -ge "$max_history_items" ]; then
@@ -175,7 +175,7 @@ render_status() {
             [[ "$state" == "PENDING"* ]] && STATUS_ICON="⏳"
             [[ "$state" == "COMPLETED"* ]] && STATUS_ICON="✅"
 
-            printf "    %-10s %-25s %-15s %-10s %s\n" "$id" "$name" "$state" "$exitcode" "$STATUS_ICON"
+            printf "    %-10s %-50s %-15s %-10s %s\n" "$id" "$name" "$state" "$exitcode" "$STATUS_ICON"
             history_count=$(( history_count + 1 ))
         done
     fi
@@ -208,7 +208,7 @@ render_status() {
     if [ "$total_cases" -eq 0 ]; then
         echo "    No log directories found under $RESULTS_BASE"
     else
-        printf "    %-20s %-s\n" "CASE ID" "ABSOLUTE LOG PATH"
+        printf "    %-46s %-s\n" "CASE ID" "ABSOLUTE LOG PATH"
         local case_count=0
         for case_id in "${UNIQUE_CASES_ARRAY[@]}"; do
             if [ "$case_count" -ge "$max_log_items" ]; then
@@ -218,7 +218,7 @@ render_status() {
             fi
             log_dir="$RESULTS_BASE/$case_id/log"
             abs_path=$(realpath "$log_dir" 2>/dev/null || echo "$log_dir")
-            printf "    %-20s %-s\n" "$case_id" "$abs_path"
+            printf "    %-46s %-s\n" "$case_id" "$abs_path"
             case_count=$(( case_count + 1 ))
         done
 
