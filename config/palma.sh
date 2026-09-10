@@ -5,8 +5,8 @@ export HAS_MODULE_SYSTEM=true
 
 # --- Ordered module groups ---
 # Preprocessing (fastp)
-export FASTP_TOOLCHAIN_MODULE="palma/2022a"
-FASTP_MODULES=("GCC/11.3.0" "fastp/0.23.2")
+export FASTP_TOOLCHAIN_MODULE="palma/2024a"
+FASTP_MODULES=("foss/2024a" "fastp/1.0.1")
 
 # Alignment (STAR)
 export STAR_TOOLCHAIN_MODULE="palma/2024a"
