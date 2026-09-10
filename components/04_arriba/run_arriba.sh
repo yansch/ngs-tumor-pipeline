@@ -59,12 +59,16 @@ if run_if_missing "$ARRIBA_OUT" "Arriba fusion detection"; then
         --cytobands="$ARRIBA_CYTOBANDS" \
         --proteinDomains="$ARRIBA_PROTEIN_DOMAINS"
 
-    # --- Virus expression quantification (optional, Omen feature) ---
+    # --- Virus expression quantification ---
     QUANTIFY_VIRUS_SH="quantify_virus_expression.sh"
-    if [ -f "$ARRIBA_BASE/quantify_virus_expression.sh" ]; then
+    if [ -f "$ARRIBA_BASE/scripts/quantify_virus_expression.sh" ]; then
+        QUANTIFY_VIRUS_SH="$ARRIBA_BASE/scripts/quantify_virus_expression.sh"
+    elif [ -f "$ARRIBA_BASE/quantify_virus_expression.sh" ]; then
         QUANTIFY_VIRUS_SH="$ARRIBA_BASE/quantify_virus_expression.sh"
     elif [ -f "$BASE_DIR/bin/quantify_virus_expression.sh" ]; then
         QUANTIFY_VIRUS_SH="$BASE_DIR/bin/quantify_virus_expression.sh"
+    elif [ -f "$BASE_DIR/scripts/quantify_virus_expression.sh" ]; then
+        QUANTIFY_VIRUS_SH="$BASE_DIR/scripts/quantify_virus_expression.sh"
     fi
 
     if command -v "$QUANTIFY_VIRUS_SH" &>/dev/null || [ -f "$QUANTIFY_VIRUS_SH" ]; then

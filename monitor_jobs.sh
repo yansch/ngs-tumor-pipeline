@@ -75,7 +75,7 @@ render_status() {
     fi
 
     # --- 1. Collect Active Queue Status ---
-    ACTIVE_JOBS=$(squeue -u "$USER" -o "%i|%j|%T|%M|%S|%R" --noheader | grep "NGS_" || true)
+    ACTIVE_JOBS=$(squeue -u "$USER" -o "%i|%j|%T|%M|%S|%R" --noheader | grep "NGS_" | sort -t'|' -k1,1nr || true)
 
     ACTIVE_JOB_IDS=()
     local total_active=0
@@ -95,7 +95,7 @@ render_status() {
     fi
 
     # --- 2. Collect Recent History ---
-    HISTORY=$(sacct -u "$USER" -S $(date -d "24 hours ago" +%Y-%m-%dT%H:%M) --format="JobID,JobName%50,State,ExitCode" --noheader | grep "NGS_" | grep -v "\." || true)
+    HISTORY=$(sacct -u "$USER" -S $(date -d "24 hours ago" +%Y-%m-%dT%H:%M) --format="JobID,JobName%50,State,ExitCode" --noheader | grep "NGS_" | grep -v "\." | tac || true)
 
     FILTERED_HISTORY_LINES=()
     while IFS= read -r line; do
@@ -113,6 +113,10 @@ render_status() {
         done
         [ "$SKIP" = true ] && continue
         FILTERED_HISTORY_LINES+=("$line")
+        if [ -z "$example_id" ]; then
+            example_id="$id"
+            example_case="${name#NGS_}"
+        fi
     done <<< "$HISTORY"
 
     local total_history=${#FILTERED_HISTORY_LINES[@]}

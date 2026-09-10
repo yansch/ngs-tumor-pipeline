@@ -143,6 +143,13 @@ def extract_qc_value(html_content, key):
     match = pattern.search(html_content)
     return match.group(1).strip() if match else "Not Found"
 
+def round_qc_value(val):
+    """Rounds floating point numbers in QC value strings to 2 decimal places."""
+    if not val or val == "Not Found":
+        return val
+    cleaned = ' '.join(val.split())
+    return re.sub(r'(\d+\.\d+)', lambda m: f"{float(m.group(1)):.2f}", cleaned)
+
 def filter_kraken_results(df, threshold=3):
     if 'reads' not in df.columns:
         return df, 0
@@ -180,12 +187,12 @@ def generate_qc_section(directory, doc_width, styles):
                 row = []
                 if i < len(key_list1):
                     key, label = key_list1[i]
-                    val = extract_qc_value(html_content, key)
+                    val = round_qc_value(extract_qc_value(html_content, key))
                     row.extend([Paragraph(f"<b>{label}:</b>", styles['TableCell']), Paragraph(escape(val), styles['TableCell'])])
                 else: row.extend(["", ""])
                 if i < len(key_list2):
                     key, label = key_list2[i]
-                    val = extract_qc_value(before_filtering_content, key)
+                    val = round_qc_value(extract_qc_value(before_filtering_content, key))
                     row.extend([Paragraph(f"<b>{label}:</b>", styles['TableCell']), Paragraph(escape(val), styles['TableCell'])])
                 else: row.extend(["", ""])
                 table_data.append(row)
@@ -236,7 +243,7 @@ def generate_cnv_section(directory, doc_width, styles, is_metagenomics=False):
             with open(cnv_genes_file, "r", encoding="utf-8") as f:
                 cnv_genes_data = json.load(f)
             
-            amps = [item for item in cnv_genes_data.get("amplifications", []) if float(item.get("log2", 0)) > 3.0]
+            amps = [item for item in cnv_genes_data.get("amplifications", []) if float(item.get("log2", 0)) >= 3.0]
             dels = cnv_genes_data.get("deletions", [])
             
             if amps or dels:
@@ -280,14 +287,24 @@ def generate_cnv_section(directory, doc_width, styles, is_metagenomics=False):
                 cnv_table = Table(table_data, colWidths=col_widths, hAlign='CENTER', repeatRows=1)
                 cnv_table.setStyle(ts)
                 
+                thresholds_p = Paragraph(
+                    "<b>Thresholds:</b> Amplification (log2 &ge; 3.0) &middot; "
+                    "Deletion (log2 &le; &minus;2.0) &middot; "
+                    "CDKN2A/B Deletion (&minus;2.0 &lt; log2 &le; &minus;1.5) &middot; "
+                    "CDKN2A/B Homozygous Deletion (log2 &lt; &minus;2.0)",
+                    styles['TableCell']
+                )
+                
                 story.append(Spacer(1, 0.1 * inch))
                 story.append(KeepTogether([
-                    Paragraph("Focal copy number alterations of panel genes", styles['SubHeader']),
-                    cnv_table
+                    Paragraph("Focal copy-number alterations", styles['SubHeader']),
+                    cnv_table,
+                    Spacer(1, 0.04 * inch),
+                    thresholds_p
                 ]))
             else:
                 story.append(Spacer(1, 0.1 * inch))
-                story.append(Paragraph("No focal copy number amplifications (log2 > 3.0) or deletions detected under current thresholds.", styles['Normal']))
+                story.append(Paragraph("No focal copy number amplifications (log2 &ge; 3.0) or deletions detected under current thresholds.", styles['Normal']))
         except Exception as e:
             print(f"Warning: Could not process CNV genes summary: {e}")
 
@@ -419,6 +436,63 @@ def generate_fusions_section(directory, doc_width, styles, fusion_genes=None):
     if story:
         story[-1].spaceAfter = SECTION_SPACING
     return story
+
+def generate_virus_section(directory, doc_width, styles):
+    """Generates the Viral detection section if virus expression data is available."""
+    vf = get_file_path(os.path.join(directory, 'arriba'), "*virus_expression.tsv")
+    if not vf or not os.path.exists(vf):
+        return []
+
+    try:
+        df = pd.read_csv(vf, sep='\t')
+        if df.empty or 'VIRUS' not in df.columns:
+            return []
+
+        cols = [c for c in ['VIRUS', 'COVERED_GENOME_FRACTION', 'HIGH_QUALITY_ALIGNMENTS'] if c in df.columns]
+        if 'VIRUS' not in cols:
+            return []
+
+        df = df[cols].assign(VIRUS=df['VIRUS'].astype(str).str.replace('_', ' '))
+        rename_map = {
+            'VIRUS': 'Virus',
+            'COVERED_GENOME_FRACTION': 'Genome Fraction',
+            'HIGH_QUALITY_ALIGNMENTS': 'High Quality Alignments'
+        }
+        df = df.rename(columns=rename_map)
+
+        table_data = [[
+            Paragraph(f"<b>{col}</b>", styles['TableCell']) for col in df.columns
+        ]]
+
+        for _, row in df.iterrows():
+            row_data = []
+            for col in df.columns:
+                val = str(row[col])
+                row_data.append(Paragraph(escape(val), styles['TableCell']))
+            table_data.append(row_data)
+
+        target_width = doc_width * TABLE_WIDTH_FACTOR
+        col_widths = [0.55 * target_width, 0.20 * target_width, 0.25 * target_width]
+
+        ts = TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('INNERGRID', (0, 0), (-1, -1), 0.25, BLACK),
+            ('BOX', (0, 0), (-1, -1), 0.5, BLACK),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+        ])
+
+        virus_table = Table(table_data, colWidths=col_widths, hAlign='CENTER', repeatRows=1)
+        virus_table.setStyle(ts)
+
+        story = create_section_header("Viral detection", styles)
+        story.append(virus_table)
+        story[-1].spaceAfter = SECTION_SPACING
+        return story
+    except Exception as e:
+        print(f"Warning: Could not process virus expression file '{vf}': {e}")
+        return []
 
 
 def create_variant_table(variants, styles, doc_width, is_qc=False):
@@ -637,6 +711,7 @@ def main():
     
     story.extend(generate_cnv_section(base_dir, doc.width, styles, is_metagenomics=is_metagenomics_sample))
     story.extend(generate_fusions_section(base_dir, doc.width, styles, fusion_genes=fusion_genes))
+    story.extend(generate_virus_section(base_dir, doc.width, styles))
 
     # Add Supplementary section at the end
     supplementary_story = []
