@@ -78,8 +78,8 @@ export PIPELINE_TIME_MIN=1800      # minimum job time limit in seconds (30m)
 export PIPELINE_TIME_MAX=172800    # maximum job time limit in seconds (48h)
 
 # --- Runtime & Output Paths ---
-export SCRATCH_DIR="/scratch/tmp/$USER/ngs-tumor-pipeline"
-export INPUT_DIR="$SCRATCH_DIR/input"
-export VARIANTS_SEARCH_DIR="$SCRATCH_DIR/input"
+export SCRATCH_DIR="${SCRATCH_DIR:-/scratch/tmp/$USER/ngs-tumor-pipeline}"
+export INPUT_DIR="${INPUT_DIR:-$SCRATCH_DIR/input}"
+export VARIANTS_SEARCH_DIR="${VARIANTS_SEARCH_DIR:-$INPUT_DIR}"
 export RESULTS_BASE="${RESULTS_BASE:-$SCRATCH_DIR/output}"
-export VENV_PATH="$SCRATCH_DIR/env"
+export VENV_PATH="${VENV_PATH:-$SCRATCH_DIR/env}"

@@ -47,7 +47,7 @@ export SORT_MEM_BASE=20000
 export FILE_TRANSFER_WAIT_TIME=2 # in minutes
 
 # --- Runtime & Output Paths ---
-export SCRATCH_DIR="/data/ngs-tumor-pipeline"
-export INPUT_DIR="/data/ngs-tumor-pipeline/input"
-export VARIANTS_SEARCH_DIR="/data/ngs-tumor-pipeline/input"
-export RESULTS_BASE="/data/ngs-tumor-pipeline/output"
+export SCRATCH_DIR="${SCRATCH_DIR:-/data/ngs-tumor-pipeline}"
+export INPUT_DIR="${INPUT_DIR:-$SCRATCH_DIR/input}"
+export VARIANTS_SEARCH_DIR="${VARIANTS_SEARCH_DIR:-$INPUT_DIR}"
+export RESULTS_BASE="${RESULTS_BASE:-$SCRATCH_DIR/output}"
