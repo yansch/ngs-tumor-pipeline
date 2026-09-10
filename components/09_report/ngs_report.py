@@ -40,36 +40,47 @@ def header_footer(canvas, doc):
     canvas.setFont('Helvetica-Bold', 7)
     canvas.setFillColor(BLACK)
     
-    y_pos = doc.height + doc.topMargin - 0.4 * inch
-    
+    y_top = doc.height + doc.topMargin - 0.4 * inch
+    y_bottom = 0.4 * inch
+
+    # Top Left: Date
+    canvas.drawString(
+        doc.leftMargin,
+        y_top,
+        datetime.now().strftime("%d.%m.%Y")
+    )
+
+    # Top Right: Sample name
+    file_prefix = getattr(doc, 'file_prefix', '')
+    if file_prefix:
+        canvas.drawRightString(
+            doc.width + doc.leftMargin,
+            y_top,
+            file_prefix
+        )
+
+    # Bottom Left: NGS Report (with Metagenomics indicator if applicable)
     if getattr(doc, 'is_metagenomics_sample', False):
         part1 = "NGS Report - "
         part2 = "Metagenomics"
         
         canvas.setFillColor(BLACK)
-        canvas.drawString(doc.leftMargin, y_pos, part1)
+        canvas.drawString(doc.leftMargin, y_bottom, part1)
         
         # Calculate the width to position the second part
         width1 = canvas.stringWidth(part1, 'Helvetica-Bold', 7)
         x_pos_part2 = doc.leftMargin + width1
         
         canvas.setFillColor(colors.red)
-        canvas.drawString(x_pos_part2, y_pos, part2)
-
+        canvas.drawString(x_pos_part2, y_bottom, part2)
     else:
-        canvas.drawString(doc.leftMargin, y_pos, "NGS Report")
+        canvas.setFillColor(BLACK)
+        canvas.drawString(doc.leftMargin, y_bottom, "NGS Report")
     
+    # Bottom Right: Page number
     canvas.setFillColor(BLACK)
-    canvas.drawRightString(
-        doc.width + doc.leftMargin,
-        doc.height + doc.topMargin - 0.4 * inch,
-        datetime.now().strftime("%d.%m.%Y")
-    )
-    file_prefix = getattr(doc, 'file_prefix', '')
-    if file_prefix:
-        canvas.drawString(doc.leftMargin, 0.4 * inch, f"Sample: {file_prefix}")
     page_num_text = f"Page {canvas.getPageNumber()}"
-    canvas.drawRightString(doc.width + doc.leftMargin, 0.4 * inch, page_num_text)
+    canvas.drawRightString(doc.width + doc.leftMargin, y_bottom, page_num_text)
     canvas.restoreState()
 
 def create_pdf_document(output_path):
