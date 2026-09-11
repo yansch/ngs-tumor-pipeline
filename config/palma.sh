@@ -67,7 +67,7 @@ export BOWTIE2_BIN="bowtie2"
 # --- Resource Allocation ---
 export PIPELINE_THREADS=32
 export PIPELINE_MEM="80G"
-export PIPELINE_PARTITION="normal"
+export PIPELINE_PARTITION="normal,requeue,requeue-zen,zen3,zen4,zen5,zen4x" #whichever partition has resources free first / has best priority for this job, will execute it
 export SORT_MEM_BASE=20000
 export FILE_TRANSFER_WAIT_TIME=2 # in minutes
 
