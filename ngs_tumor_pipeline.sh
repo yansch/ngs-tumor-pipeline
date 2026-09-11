@@ -65,6 +65,9 @@ export CNS_FILE="$CNV_DIR/${CNV_BASE}.cns"
 
 mkdir -p "$TMP_DIR" "$CNV_DIR" "$OUT_DIR/arriba" "$OUT_DIR/fastp" "$LOG_DIR"
 
+# Check Environment Exists / Update VENV Path if necessary
+test_python_env_path
+
 echo "═══════════════════════════════════════════════════════════════════════"
 echo "🧬 NGS Tumor Pipeline  |  Case: $CASE_LABEL"
 echo "   Host: $(hostname)   Threads: $THREADS"

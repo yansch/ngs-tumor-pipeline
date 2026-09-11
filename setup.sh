@@ -59,8 +59,17 @@ ACTUAL_VER=$($PY_BIN -c 'import sys; print(f"{sys.version_info.major}.{sys.versi
 echo "🛠️  Using Python $ACTUAL_VER from $(command -v $PY_BIN)"
 
 # --- 2. Virtual Environment Management ---
+
+#handle difference in configured and actual paths, default to actual path where project lives
+test_python_env_path "true" #true means setup gets executed
+
 if [ ! -d "$VENV_PATH" ]; then
     echo "🌱 Creating new virtual environment at $VENV_PATH..."
+elif [[ ! -f "$VENV_PATH/bin/activate" ]]; then
+    echo "🌱 Recreating virtual environment at $VENV_PATH..."
+fi
+
+if [[ ! -d "$VENV_PATH" || ! -f "$VENV_PATH/bin/activate" ]]; then
     $PY_BIN -m venv "$VENV_PATH"
 else
     echo "🔄 Existing environment found. Refreshing dependencies..."

@@ -176,6 +176,9 @@ if [ "$NOW" = false ] && [ "$DRY_RUN" = false ]; then
     update_check
 fi
 
+# Check Environment Exists / Fail if it doesnt / Update VENV Path if necessary
+test_python_env_path
+
 # --- 2. Environment Initialization ---
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 layout
