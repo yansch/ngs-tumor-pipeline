@@ -21,11 +21,21 @@ if run_if_missing "$BAM_FILE_ARRIBA" "STAR alignment"; then
     purge_modules
     load_modules "$STAR_TOOLCHAIN_MODULE" "${STAR_MODULES[@]}" "${SAMTOOLS_MODULES[@]}"
 
+    #uncompressing before, instead of star uncompressing whilst executing itself, fixes local execution failing due to eof.
+    UNCOMP_DIR="$TMP_DIR/star_fastq_uncompressed"
+    mkdir -p "$UNCOMP_DIR"
+    
+    echo "Uncompressing fastqs"
+    
+    zcat "$R1_TRIMMED" > "$UNCOMP_DIR/R1.trimmed.fq"
+    zcat "$R2_TRIMMED" > "$UNCOMP_DIR/R2.trimmed.fq"
+       
+    echo "Running STAR"
     STAR \
         --runThreadN "$THREADS" \
         --outFileNamePrefix "$TMP_DIR/arriba_" \
         --genomeDir "$STAR_INDEX" --genomeLoad NoSharedMemory \
-        --readFilesIn "$R1_TRIMMED" "$R2_TRIMMED" --readFilesCommand zcat \
+        --readFilesIn "$UNCOMP_DIR/R1.trimmed.fq" "$UNCOMP_DIR/R2.trimmed.fq" \
         --outStd BAM_Unsorted --outSAMtype BAM Unsorted \
         --outSAMunmapped Within --outBAMcompression 0 \
         --outFilterMultimapNmax 50 --peOverlapNbasesMin 10 \
@@ -41,8 +51,21 @@ if run_if_missing "$BAM_FILE_ARRIBA" "STAR alignment"; then
         -T "$TMP_DIR/star_tmp_arriba" \
         -O bam \
         -o "$BAM_FILE_ARRIBA"
-
+    echo "Running samtools index"
     samtools index "$BAM_FILE_ARRIBA"
+    
+    R1_size=$(wc -c < "$R1_TRIMMED")
+    R2_size=$(wc -c < "$R2_TRIMMED")
+    BAM_size=$(wc -c < "$BAM_FILE_ARRIBA")
+    combined_bytes=$(( R1_size + R2_size ))
+    combined_size_mb=$(printf "%.2f" "$(echo "scale=0; $combined_bytes / 1048576" | bc)")
+    BAM_size_mb=$(printf "%.2f" "$(echo "scale=0; $BAM_size / 1048576" | bc)")
+    
+    # Print File Sizes in MB to check for Star Errors in Logs. If huge difference, STAR failed at some point
+    echo -e "Trimmed Reads:\t\t$combined_size_mb MB"
+    echo -e "BAM File Arriba:\t$BAM_size_mb MB"
+    echo "If there is a huge difference in file sizes, this could point to a problem."
+
 fi
 
 step_end "02 · STAR" "$_STEP_T0"
