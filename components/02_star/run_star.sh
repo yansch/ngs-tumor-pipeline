@@ -66,6 +66,11 @@ if run_if_missing "$BAM_FILE_ARRIBA" "STAR alignment"; then
     echo -e "BAM File Arriba:\t$BAM_size_mb MB"
     echo "If there is a huge difference in file sizes, this could point to a problem."
 
+    #Cleanup of uncompressed data to save space, especially useful for the local run.
+    UNCOMP_SIZE=$(du -sm "$UNCOMP_DIR" | awk '{print $1}')
+    rm -rf "$UNCOMP_DIR"
+    echo "Cleared $UNCOMP_SIZE MB of uncompressed data."  
+
 fi
 
 step_end "02 · STAR" "$_STEP_T0"
