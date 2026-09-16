@@ -325,7 +325,7 @@ while IFS= read -r R1; do
             fi
             
             id=$(sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2")
-            printf ' 📤 [PALMA JOB]\t%s\n' "$id"
+            printf ' 📤 [PALMA JOB]\t\t%s\n' "$id"
             ;;
         omen)
             echo -e " 🚀 [OMEN]\t\tExecuting local run: $CASE_LABEL"

@@ -452,16 +452,25 @@ def generate_virus_section(directory, doc_width, styles):
     """Generates the Viral detection section if virus expression data is available."""
     vf = get_file_path(os.path.join(directory, 'arriba'), "*virus_expression.tsv")
     if not vf or not os.path.exists(vf):
-        return []
+        story = create_section_header("Viral detection", styles)
+        story.append(Paragraph("No Virus Expression file found or no valid path.", styles['Normal']))
+        story[-1].spaceAfter = SECTION_SPACING
+        return story
 
     try:
         df = pd.read_csv(vf, sep='\t')
         if df.empty or 'VIRUS' not in df.columns:
-            return []
+            story = create_section_header("Viral detection", styles)
+            story.append(Paragraph("No Virus Expression Data detected in Sample.", styles['Normal']))
+            story[-1].spaceAfter = SECTION_SPACING
+            return story
 
         cols = [c for c in ['VIRUS', 'COVERED_GENOME_FRACTION', 'HIGH_QUALITY_ALIGNMENTS'] if c in df.columns]
         if 'VIRUS' not in cols:
-            return []
+            story = create_section_header("Viral detection", styles)
+            story.append(Paragraph("No Virus Expression Data detected in Sample.", styles['Normal']))
+            story[-1].spaceAfter = SECTION_SPACING
+            return story
 
         df = df[cols].assign(VIRUS=df['VIRUS'].astype(str).str.replace('_', ' '))
         rename_map = {
