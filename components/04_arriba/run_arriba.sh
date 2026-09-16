@@ -72,18 +72,18 @@ if run_if_missing "$ARRIBA_OUT" "Arriba fusion detection"; then
     fi
 
     if command -v "$QUANTIFY_VIRUS_SH" &>/dev/null || [ -f "$QUANTIFY_VIRUS_SH" ]; then
-        echo "   Quantifying virus expression..."
+        echo -e "\tQuantifying virus expression..."
         if "$QUANTIFY_VIRUS_SH" \
             "$BAM_FILE_ARRIBA" \
             "$OUT_DIR/arriba/${R1_base}_virus_expression.tsv"; then
 
-            echo "Virus quantification completed."
+            echo -e "\tVirus quantification completed."
 
         else
             status=$?
-            echo "WARNING: virus quantification failed with exit status $status" >&2
-            echo "BAM: $BAM_FILE_ARRIBA" >&2
-            echo "Output: $OUT_DIR/arriba/${R1_base}_virus_expression.tsv" >&2
+            echo -e "\tWARNING: virus quantification failed with exit status $status" >&2
+            echo -e "\tBAM: $BAM_FILE_ARRIBA" >&2
+            echo -e "\tOutput: $OUT_DIR/arriba/${R1_base}_virus_expression.tsv" >&2
 
             continue             # record the failure if it happens again, but dont fail whole pipeline
         fi
