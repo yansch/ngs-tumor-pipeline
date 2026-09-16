@@ -87,10 +87,7 @@ if run_if_missing "$ARRIBA_OUT" "Arriba fusion detection"; then
 
             continue             # record the failure if it happens again, but dont fail whole pipeline
         fi
-        
-        #"$QUANTIFY_VIRUS_SH" \
-        #    "$BAM_FILE_ARRIBA" \
-        #    "$OUT_DIR/arriba/${R1_base}_virus_expression.tsv" || true
+                
     fi
 fi
 
