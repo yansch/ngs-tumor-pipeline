@@ -176,6 +176,9 @@ if [ "$NOW" = false ] && [ "$DRY_RUN" = false ]; then
     update_check
 fi
 
+# Check Environment Exists / Fail if it doesnt / Update VENV Path if necessary
+test_python_env_path
+
 # --- 2. Environment Initialization ---
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 layout
@@ -322,16 +325,17 @@ while IFS= read -r R1; do
             fi
             
             id=$(sbatch "${SBATCH_ARGS[@]}" "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2")
-            printf ' 📤 [PALMA JOB]\t%s\n' "$id"
+            printf ' 📤 [PALMA JOB]\t\t%s\n' "$id"
             ;;
         omen)
             echo -e " 🚀 [OMEN]\t\tExecuting local run: $CASE_LABEL"
             LOG_DIR="$RESULTS_BASE/${CASE_LABEL}/log"
             mkdir -p "$LOG_DIR"
             LOG_FILE="$LOG_DIR/pipeline_${TIMESTAMP}.log"
-            
+                                  
             # Direct execution with real-time log mirroring
             bash "$PROJECT_DIR/ngs_tumor_pipeline.sh" "$R1" "$R2" 2>&1 | tee "$LOG_FILE"
+            
             ;;
         *)
             echo "❌ Error: Unknown PIPELINE_HOST '$PIPELINE_HOST'. Check config."
@@ -361,3 +365,4 @@ else
     fi
 fi
 layout '='
+

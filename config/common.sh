@@ -82,6 +82,36 @@ purge_modules() {
     [ "$HAS_MODULE_SYSTEM" = true ] && module purge || true
 }
 
+test_python_env_path() {
+    local setup="${1:-false}"
+       
+    #Normalize the default path and the actual path.
+    #env location according to host config
+    CONFIG_VENV_PATH="$(realpath -m -- "$VENV_PATH")"
+    #where the location is expected depending on our actual path
+    ACTUAL_VENV_PATH="$(realpath -m -- "$PROJECT_DIR/env")"
+
+    if [[ "$CONFIG_VENV_PATH" != "$ACTUAL_VENV_PATH" ]]; then
+        printf '⚠️ configured default environment path differs from actual path.\n' >&2
+        printf 'Default: %s\n' "$CONFIG_VENV_PATH" >&2
+        printf 'Actual: %s\n' "$ACTUAL_VENV_PATH" >&2
+
+        # Use the path based on the actual project path.
+        VENV_PATH="$ACTUAL_VENV_PATH"
+        printf 'Using environment path at %s\n' "$VENV_PATH"
+    else
+        # Use the normalized path from the configuration, dont say anything because this is normal.
+        VENV_PATH="$CONFIG_VENV_PATH"
+    fi
+
+    #check for environment, dont fail if setup is executed (gets a true on function call as argument)
+    if [[ ! -f "$VENV_PATH/bin/activate" && "$setup" == "false" ]]; then
+        echo "❌ Error: Virtual environment not found at $VENV_PATH. Run setup.sh first."
+        exit 1
+    fi
+}
+
+
 load_ngs_python_env() {
     if [ -f "$VENV_PATH/bin/activate" ]; then
         source "$VENV_PATH/bin/activate"

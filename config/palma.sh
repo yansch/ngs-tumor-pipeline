@@ -25,7 +25,7 @@ BOWTIE2_MODULES=("GCC/13.3.0" "Bowtie2/2.5.4")
 # Downstream Analysis Group
 export ANALYSIS_TOOLCHAIN_MODULE="palma/2024a"
 PYTHON_MODULES=("GCCcore/13.3.0" "Python/3.12.3")
-ARRIBA_VISUALIZATION_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2")
+ARRIBA_VISUALIZATION_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2" "SAMtools/1.21")
 R_BIOCONDUCTOR_MODULES=("GCC/13.3.0" "OpenMPI/5.0.3" "R-bundle-Bioconductor/3.20-R-4.4.2")
 
 # --- Reference Base Paths ---
@@ -67,7 +67,7 @@ export BOWTIE2_BIN="bowtie2"
 # --- Resource Allocation ---
 export PIPELINE_THREADS=32
 export PIPELINE_MEM="80G"
-export PIPELINE_PARTITION="normal"
+export PIPELINE_PARTITION="normal,requeue,zen4,zen4x" #whichever partition has resources free first / has best priority for this job, will execute it
 export SORT_MEM_BASE=20000
 export FILE_TRANSFER_WAIT_TIME=2 # in minutes
 
