@@ -253,6 +253,11 @@ fi
 
 submitted=0
 
+if [ "$PIPELINE_HOST" = "omen" ]; then
+    amount=$(find "$INPUT_DIR" -maxdepth 1 -name "*$THIS_CASE_ONLY*_R1_*.fastq.gz" | wc -l)
+    Update_Overall
+fi
+
 # --- 3. Processing Loop ---
 while IFS= read -r R1; do
     R2="${R1/_R1_/_R2_}"
@@ -344,6 +349,9 @@ while IFS= read -r R1; do
     esac
 
     (( submitted++ )) || true
+    if [ "$PIPELINE_HOST" = "omen" ]; then
+        Update_Overall
+    fi
 done < <(find "$INPUT_DIR" -maxdepth 1 -name "*$THIS_CASE_ONLY*_R1_*.fastq.gz" | sort)
 
 # --- 4. Summary ---
@@ -362,7 +370,10 @@ else
     [ "$DRY_RUN" = true ] && echo -e "   Note:\t\tDry-run complete. No jobs were executed."
     if [ "$PIPELINE_HOST" = "palma" ]; then
         echo -e "   Tip:\t\t\tuse 'bash monitor_jobs.sh' to check Palma job status and logs."
+    elif [ "$PIPELINE_HOST" = "omen" ]; then
+        Update_Overall
     fi
 fi
 layout '='
+
 
