@@ -77,9 +77,6 @@ echo "════════════════════════�
 # 3. Step 01: Preprocessing (FASTQ trimming)
 # ---------------------------------------------------------------------------
 source "$PROJECT_DIR/components/01_fastp/run_fastp.sh"
-if [ "$PIPELINE_HOST" = "omen" ]; then
-    Update_Case "$CASE_LABEL" "fastp"
-fi
 
 if [ "$PIPELINE_HOST" = "palma" ]; then
     echo ""
@@ -161,11 +158,8 @@ else
     echo ""
     echo "─── Sequential mode (Omen / local) ───────────────────────────────────"
     source "$PROJECT_DIR/components/02_star/run_star.sh"
-    Update_Case "$CASE_LABEL" "star"
     source "$PROJECT_DIR/components/03_bwa_mem/run_bwa_mem.sh"
-    Update_Case "$CASE_LABEL" "bwa"
     source "$PROJECT_DIR/components/04_arriba/run_arriba.sh"
-    Update_Case "$CASE_LABEL" "arriba"
 
     # ---------------------------------------------------------------------------
     # 4. Switch to analysis environment (Python + R)
@@ -184,13 +178,9 @@ else
     # 5. Analysis steps (BAMs → results)
     # ---------------------------------------------------------------------------
     source "$PROJECT_DIR/components/05_cnvkit/run_cnvkit.sh"
-    Update_Case "$CASE_LABEL" "cnvkit"
     source "$PROJECT_DIR/components/06_cnv_plots/run_cnv_plots.sh"
-    Update_Case "$CASE_LABEL" "cnv_plots"
     source "$PROJECT_DIR/components/07_coverage/run_coverage.sh"
-    Update_Case "$CASE_LABEL" "coverage"
     source "$PROJECT_DIR/components/10_nonhuman_reads/run_nonhuman_reads.sh"
-    Update_Case "$CASE_LABEL" "nonhuman"
 
     purge_modules
     load_modules "$ANALYSIS_TOOLCHAIN_MODULE" "${PYTHON_MODULES[@]}"
@@ -199,9 +189,7 @@ else
     unset PYTHONPATH
 
     source "$PROJECT_DIR/components/08_variants/run_variants.sh"
-    Update_Case "$CASE_LABEL" "variants"
     source "$PROJECT_DIR/components/09_report/run_report.sh"
-    Update_Case "$CASE_LABEL" "report"
 fi
 
 

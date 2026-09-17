@@ -1,7 +1,7 @@
 #!/bin/bash
 # run.sh - Orchestrator for NGS Tumor Pipeline
 set -eo pipefail
-trap 'echo "run.sh - Orchestrator failed at line $LINENO: $BASH_COMMAND" >&2' ERR
+trap 'type status_finish &>/dev/null && status_finish "${submitted:-0}" 1; echo "run.sh - Orchestrator failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 # Locate project
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -224,17 +224,23 @@ if [ "$NOW" = false ] && [ "$DRY_RUN" = false ]; then
         empty=$((wait_minutes - i))
         bar_filled=$(printf '%*s' "$filled" '' | tr ' ' '#')
         bar_empty=$(printf '%*s' "$empty" '' | tr ' ' '-')
-        printf '\r⚙ [SAFETY][%s%s]\tChecking for active file transfer in %s. Skip by passing --now.' "$bar_filled" "$bar_empty" "$INPUT_DIR"
+        if [ -t 1 ]; then
+            printf '\r⚙ [SAFETY][%s%s]\tChecking for active file transfer in %s. Skip by passing --now.' "$bar_filled" "$bar_empty" "$INPUT_DIR"
+        fi
         sleep 1
     done
-    echo ""
+    [ -t 1 ] && echo "" || echo "⚙ [SAFETY] Checking for active file transfer in $INPUT_DIR..."
 
     CUR_SIZE=$(GET_SIZE)
 
     while true; do
         TIMECHECK=$(date +"%H:%M:%S")
         if [ "$PREV_SIZE" -lt "$CUR_SIZE" ]; then
-            printf '\r⚙\t\t\tFile transfer still active. Last checked at [ %s ]. Checking again in %s minutes.' "$TIMECHECK" "$wait_minutes"
+            if [ -t 1 ]; then
+                printf '\r⚙\t\t\tFile transfer still active. Last checked at [ %s ]. Checking again in %s minutes.' "$TIMECHECK" "$wait_minutes"
+            else
+                printf '⚙\t\t\tFile transfer still active. Last checked at [ %s ].\n' "$TIMECHECK"
+            fi
             sleep "$SLEEPTIMER"
             PREV_SIZE=$(GET_SIZE)
             sleep 5
@@ -252,10 +258,12 @@ if [ "$NOW" = false ] && [ "$DRY_RUN" = false ]; then
 fi
 
 submitted=0
+total_cases_count=0
 
 if [ "$PIPELINE_HOST" = "omen" ]; then
-    amount=$(find "$INPUT_DIR" -maxdepth 1 -name "*$THIS_CASE_ONLY*_R1_*.fastq.gz" | wc -l)
-    Update_Overall
+    total_cases_count=$(find "$INPUT_DIR" -maxdepth 1 -name "*$THIS_CASE_ONLY*_R1_*.fastq.gz" | wc -l)
+    status_init "$total_cases_count" "$INPUT_DIR"
+    status_gui_start
 fi
 
 # --- 3. Processing Loop ---
@@ -274,6 +282,11 @@ while IFS= read -r R1; do
         echo -e " 🔍 [DRY-RUN]\tFound: $CASE_LABEL"
         (( submitted++ )) || true
         continue
+    fi
+
+    # Update status tracker for this case
+    if [ "$PIPELINE_HOST" = "omen" ]; then
+        status_case_start "$CASE_LABEL" "$(( submitted + 1 ))" "$total_cases_count"
     fi
 
     # --- Dispatch Logic ---
@@ -349,9 +362,6 @@ while IFS= read -r R1; do
     esac
 
     (( submitted++ )) || true
-    if [ "$PIPELINE_HOST" = "omen" ]; then
-        Update_Overall
-    fi
 done < <(find "$INPUT_DIR" -maxdepth 1 -name "*$THIS_CASE_ONLY*_R1_*.fastq.gz" | sort)
 
 # --- 4. Summary ---
@@ -364,6 +374,7 @@ if [ "$submitted" -eq 0 ]; then
     else
         echo "   No valid *_R1_*.fastq.gz files found in $INPUT_DIR."
     fi
+    [ "$PIPELINE_HOST" = "omen" ] && status_finish 0 1
     exit 1
 else
     echo -e "😊 Submitted cases:\t$submitted"
@@ -371,9 +382,10 @@ else
     if [ "$PIPELINE_HOST" = "palma" ]; then
         echo -e "   Tip:\t\t\tuse 'bash monitor_jobs.sh' to check Palma job status and logs."
     elif [ "$PIPELINE_HOST" = "omen" ]; then
-        Update_Overall
+        status_finish "$submitted" 0
     fi
 fi
 layout '='
+
 
 

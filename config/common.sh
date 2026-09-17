@@ -62,9 +62,12 @@ done
 
 unset __ngs_var
 unset __NGS_PRESERVE_LIST
-unset __NGS_PRESERVED_VALUES
-
 export MPLBACKEND=Agg
+
+# --- Load Status Tracker ---
+if [ -f "$PROJECT_DIR/lib/status_tracker.sh" ]; then
+    source "$PROJECT_DIR/lib/status_tracker.sh"
+fi
 
 # --- Helper Functions ---
 

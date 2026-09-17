@@ -136,7 +136,41 @@ fi
 echo "📂 Initializing project directories..."
 mkdir -p "$INPUT_DIR" "$VARIANTS_SEARCH_DIR" "$RESULTS_BASE"
 
-# --- 4. Final Verification ---
+# --- 4. Desktop Status Icon (Omen / Local) ---
+if [[ "$PIPELINE_HOST" == "omen" ]]; then
+    echo "🖥️  Setting up Desktop Status Icon..."
+    DESKTOP_DIR="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
+    APPS_DIR="$HOME/.local/share/applications"
+    GUI_SCRIPT="$PROJECT_DIR/lib/pipeline_status_gui.py"
+
+    mkdir -p "$DESKTOP_DIR" "$APPS_DIR"
+
+    DESKTOP_ENTRY="[Desktop Entry]
+Version=1.0
+Type=Application
+Name=🧬 Pipeline Status
+GenericName=NGS Tumor Pipeline Monitor
+Comment=Check if NGS Tumor Pipeline is running
+Exec=python3 $GUI_SCRIPT
+Icon=utilities-system-monitor
+Terminal=false
+Categories=Science;Biology;Utility;
+StartupNotify=true
+"
+
+    printf '%s' "$DESKTOP_ENTRY" > "$DESKTOP_DIR/NGS_Pipeline_Status.desktop"
+    chmod +x "$DESKTOP_DIR/NGS_Pipeline_Status.desktop"
+
+    printf '%s' "$DESKTOP_ENTRY" > "$APPS_DIR/NGS_Pipeline_Status.desktop"
+    chmod +x "$APPS_DIR/NGS_Pipeline_Status.desktop"
+
+    if command -v gio &>/dev/null; then
+        gio set "$DESKTOP_DIR/NGS_Pipeline_Status.desktop" metadata::trusted true 2>/dev/null || true
+    fi
+    echo "✅ Desktop status icon installed to $DESKTOP_DIR/NGS_Pipeline_Status.desktop"
+fi
+
+# --- 5. Final Verification ---
 echo "-------------------------------------------------------"
 echo "✨ Setup complete for $PIPELINE_HOST."
 echo "   Project: $PROJECT_DIR"

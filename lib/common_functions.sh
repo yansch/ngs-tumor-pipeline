@@ -12,6 +12,7 @@ step_start() {
     echo ""
     echo "▶ [$(date '+%H:%M:%S')] ${name}"
     echo "─────────────────────────────────────────────────────────────────────"
+    type status_step_update &>/dev/null && status_step_update "$name" "running" || true
 }
 
 # ---------------------------------------------------------------------------
@@ -21,6 +22,7 @@ step_start() {
 step_end() {
     local name="$1"
     local t0="${2:-}"
+    type status_step_update &>/dev/null && status_step_update "$name" "done" || true
     if [ -n "$t0" ]; then
         local elapsed=$(( $(date +%s) - t0 ))
         printf "✅ %s — done in %02d:%02d:%02d\n" \
