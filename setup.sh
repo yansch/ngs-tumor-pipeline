@@ -5,6 +5,7 @@ set -eo pipefail
 # --- 0. Configuration & Setup ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config/common.sh"
+source "$SCRIPT_DIR/lib/common_functions.sh"
 
 ENV_FILE="$PROJECT_DIR/.env"
 CURRENT_ONCOKB_TOKEN="${ONCOKB_API_TOKEN:-}"

@@ -163,6 +163,7 @@ fi
 
 # Source configuration after parsing args so --set / --overrides-file can be applied.
 source "$SCRIPT_DIR/config/common.sh"
+source "$SCRIPT_DIR/lib/common_functions.sh"
 
 INPUT_DIR="${INPUT_DIR_ARG:-$INPUT_DIR}"
 
