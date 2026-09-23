@@ -167,16 +167,18 @@ update_check() {
         fi
         layout '='
 
-        echo -e "\n⚠️  WARNING: Updating will discard any local changes that you made to the pipeline."
-        echo "   If you have not changed any code here, you can safely proceed."
         read -rp "Do you want to update now? [y/n] " answer
         case "${answer,,}" in
             y|yes)
                 echo "Updating repository to origin/main..."
-                git reset --hard origin/main
-                git pull
-                echo "✅ Pipeline updated successfully. Please re-run your command."
-                exit 0
+                if git pull --ff-only; then
+                    echo "✅ Pipeline updated successfully. Please re-run your command."
+                    exit 0
+                else
+                    echo "❌ Update failed: local branch has diverged from origin/main."
+                    echo "   Please resolve manually with 'git pull' or 'git rebase origin/main'."
+                    exit 1
+                fi
                 ;;
             *)
                 echo "Skipping update."
