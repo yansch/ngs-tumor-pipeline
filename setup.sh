@@ -15,14 +15,32 @@ else
     printf '🔑 Enter your OncoKB API token (or press Enter to skip): '
 fi
 
-read -r -s ONCOKB_TOKEN_INPUT || true
-echo
+while true; do
+    read -r -s ONCOKB_TOKEN_INPUT || true
+    echo
+    if [ -z "$ONCOKB_TOKEN_INPUT" ]; then
+        # No token entered – keep existing or skip
+        break
+    fi
+    if [[ "$ONCOKB_TOKEN_INPUT" =~ ^[a-z0-9-]{16,}$ ]]; then
+        # Valid token
+        break
+    else
+        echo "❌ Invalid OncoKB token: must be ≥16 characters, contain only lower‑case letters, numbers, or dashes."
+        printf '🔑 Enter a valid OncoKB API token (or press Enter to skip): '
+    fi
+done
 
 if [ -n "$ONCOKB_TOKEN_INPUT" ]; then
     ONCOKB_API_TOKEN="$ONCOKB_TOKEN_INPUT"
     if [ -f "$ENV_FILE" ]; then
         tmp_env_file="$(mktemp)"
-        grep -v '^ONCOKB_API_TOKEN=' "$ENV_FILE" > "$tmp_env_file" || true
+        grep -v '^ONCOKB_API_TOKEN=' "$ENV_FILE" > "$tmp_env_file"; grep_status=$?
+        if [ "$grep_status" -gt 1 ]; then
+            echo "❌ Error: Failed to read $ENV_FILE (grep exit $grep_status)."
+            rm -f "$tmp_env_file"
+            exit 1
+        fi
         printf 'ONCOKB_API_TOKEN=%s\n' "$ONCOKB_API_TOKEN" >> "$tmp_env_file"
         mv "$tmp_env_file" "$ENV_FILE"
     else

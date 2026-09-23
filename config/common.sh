@@ -79,7 +79,9 @@ load_modules() {
 }
 
 purge_modules() {
-    [ "$HAS_MODULE_SYSTEM" = true ] && module purge || true
+    if [ "$HAS_MODULE_SYSTEM" = true ]; then
+        module purge
+    fi
 }
 
 test_python_env_path() {

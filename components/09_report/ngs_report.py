@@ -449,67 +449,62 @@ def generate_fusions_section(directory, doc_width, styles, fusion_genes=None):
     return story
 
 def generate_virus_section(directory, doc_width, styles):
-    """Generates the Viral detection section if virus expression data is available."""
-    vf = get_file_path(os.path.join(directory, 'arriba'), "*virus_expression.tsv")
-    if not vf or not os.path.exists(vf):
-        story = create_section_header("Viral detection", styles)
-        story.append(Paragraph("No Virus Expression file found or no valid path.", styles['Normal']))
+    """Generates the Virus detection section if virus expression data is available."""
+
+    def _no_data(message):
+        story = create_section_header("Virus detection", styles)
+        story.append(Paragraph(message, styles['Normal']))
         story[-1].spaceAfter = SECTION_SPACING
         return story
 
+    vf = get_file_path(os.path.join(directory, 'arriba'), "*virus_expression.tsv")
+    if not vf or not os.path.exists(vf):
+        return _no_data("No virus expression file found.")
+
     try:
         df = pd.read_csv(vf, sep='\t')
-        if df.empty or 'VIRUS' not in df.columns:
-            story = create_section_header("Viral detection", styles)
-            story.append(Paragraph("No Virus Expression Data detected in Sample.", styles['Normal']))
-            story[-1].spaceAfter = SECTION_SPACING
-            return story
 
         cols = [c for c in ['VIRUS', 'COVERED_GENOME_FRACTION', 'HIGH_QUALITY_ALIGNMENTS'] if c in df.columns]
-        if 'VIRUS' not in cols:
-            story = create_section_header("Viral detection", styles)
-            story.append(Paragraph("No Virus Expression Data detected in Sample.", styles['Normal']))
-            story[-1].spaceAfter = SECTION_SPACING
-            return story
+        if df.empty or 'VIRUS' not in cols:
+            return _no_data("No virus expression data detected in this sample.")
 
-        df = df[cols].assign(VIRUS=df['VIRUS'].astype(str).str.replace('_', ' '))
-        rename_map = {
-            'VIRUS': 'Virus',
-            'COVERED_GENOME_FRACTION': 'Genome Fraction',
-            'HIGH_QUALITY_ALIGNMENTS': 'High Quality Alignments'
-        }
-        df = df.rename(columns=rename_map)
+        df = (
+            df[cols]
+            .assign(VIRUS=df['VIRUS'].astype(str).str.replace('_', ' '))
+            .rename(columns={
+                'VIRUS': 'Virus',
+                'COVERED_GENOME_FRACTION': 'Genome Fraction',
+                'HIGH_QUALITY_ALIGNMENTS': 'High-Quality Alignments',
+            })
+        )
 
-        table_data = [[
-            Paragraph(f"<b>{col}</b>", styles['TableCell']) for col in df.columns
-        ]]
-
-        for _, row in df.iterrows():
-            row_data = []
-            for col in df.columns:
-                val = str(row[col])
-                row_data.append(Paragraph(escape(val), styles['TableCell']))
-            table_data.append(row_data)
+        header = [Paragraph(f"<b>{col}</b>", styles['TableCell']) for col in df.columns]
+        rows = [
+            [Paragraph(escape(str(val)), styles['TableCell']) for val in row]
+            for row in df.itertuples(index=False)
+        ]
+        table_data = [header, *rows]
 
         target_width = doc_width * TABLE_WIDTH_FACTOR
         col_widths = [0.55 * target_width, 0.20 * target_width, 0.25 * target_width]
 
         ts = TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('INNERGRID', (0, 0), (-1, -1), 0.25, BLACK),
-            ('BOX', (0, 0), (-1, -1), 0.5, BLACK),
+            ('VALIGN',      (0, 0), (-1, -1), 'MIDDLE'),
+            ('INNERGRID',   (0, 0), (-1, -1), 0.25, BLACK),
+            ('BOX',         (0, 0), (-1, -1), 0.5,  BLACK),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
-            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+            ('ALIGN',       (1, 0), (-1, -1), 'CENTER'),
+            ('BACKGROUND',  (0, 0), (-1, 0),  colors.HexColor("#EEEEEE")),
         ])
 
         virus_table = Table(table_data, colWidths=col_widths, hAlign='CENTER', repeatRows=1)
         virus_table.setStyle(ts)
 
-        story = create_section_header("Viral detection", styles)
+        story = create_section_header("Virus detection", styles)
         story.append(virus_table)
         story[-1].spaceAfter = SECTION_SPACING
         return story
+
     except Exception as e:
         print(f"Warning: Could not process virus expression file '{vf}': {e}")
         return []
