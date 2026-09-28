@@ -571,6 +571,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 2	209113113	G	A	IDH1	NM_001282387.1:c.394C>T	missense_variant	pathogen	2023-09-26	
 2	209113281	T	C	IDH1	NM_001282387.1:c.226A>G	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 28.4.2026	2026-05-04	
 2	209113355	G	C	IDH1	NM_001282387.1:c.152C>G	missense_variant	likely benign (Varsome)	2024-04-04	
+2	209113362	G	A	IDH1	NM_001282387.1:c.145C>T	missense_variant	Relevanz unklar (Varsome) 24.9.2026	2026-09-28	
 20	57484415	G	A	GNAS	NM_080425.3:c.2525G>A	missense_variant	pathogen (Varsome)	2024-04-17	
 20	57484415	G	A	GNAS	NM_000516.6:c.596G>A	missense_variant	pathogen (Varsome)	2024-04-17	
 20	57484415	G	A	GNAS	NM_080425.3:c.2525G>A	missense_variant	516er Transkript für den Variant Report verwenden, nicht dieses hier	2024-04-17	
@@ -730,6 +731,7 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 4	55139727	C	G	PDGFRA	NM_001347828.2:c.1463C>G	missense_variant	benign (Varsome), Relevanz unklar (oncoKB)	2024-09-02	
 4	55139739	A	G	PDGFRA	NM_001347828.2:c.1475A>G	missense_variant	likely benign (Varsome)	2025-11-13	
 4	55139742	A	G	PDGFRA	NM_001347828.2:c.1478A>G	missense_variant	likely benign (varsome)	2026-03-20	
+4	55139756	A	G	PDGFRA	NM_001347828.2:c.1492A>G	missense_variant	likely benign (Varsome)	2026-09-28	
 4	55139894	C	T	PDGFRA	NM_001347828.2:c.1630C>T	missense_variant	likely benign (Varsome)	2026-02-12	
 4	55140729	A	AGTCCTGGTGCTGTTGGTGATTGTGATCATCTCACTTATTGTCCTG	PDGFRA	NM_001347828.2:c.1668_1712dup	inframe_insertion	pathogen (oncokb)	2023-10-04	
 4	55140746	T	A	PDGFRA	NM_001347828.2:c.1682T>A	missense_variant	uncertain significance( varsome) likely oncogenic (onco KB) 06.06.2024	2024-06-06	
@@ -952,13 +954,16 @@ Chromosome	Position	Ref_allele	Alt_allele	Symbol	HGVSC	Consequence	Comment	Date
 7	55221747	GC	G	EGFR	NM_005228.5:c.797del	frameshift_variant	wahrscheinlich pathogen (Varsome) + frameshift	2023-09-28	
 7	55221765	A	G	EGFR	NM_005228.5:c.809A>G	missense_variant	Relevanz unklar (Varsome) 10.11.2025	2025-11-13	
 7	55221821	G	A	EGFR	NM_005228.5:c.865G>A	missense_variant	pathogen (Varsome)	2024-05-02	
+7	55221821	G	A	EGFR	NM_005228.5:c.865G>A	missense_variant	sofern diese Variante zusammen mit A289V auftritt und es die einzige EGFR-Alteration in dem Bereich ist, so ist diese Variante wie folgt zu beschreiben: NM_005228.5: c.865_866delinsAT p.A289I (PMID 36044040) - wahrscheinlich pathogen / aktivierend (oncoKB)	2026-09-28	
 7	55221822	C	A	EGFR	NM_005228.5:c.866C>A	missense_variant	pathogen (Varsome / OncoKB)	2023-04-28	
 7	55221822	C	T	EGFR	NM_005228.5:c.866C>T	missense_variant	pathogen, aktivierend (oncoKB)	2023-04-28	
 7	55221822	C	T	EGFR	NM_005228.5:c.866C>T	missense_variant	pathogen (Varsome)	2023-05-03	
+7	55221822	C	T	EGFR	NM_005228.5:c.866C>T	missense_variant	sofern diese Variante zusammen mit A289T auftritt und es die einzige EGFR-Alteration in dem Bereich ist, so ist diese Variante wie folgt zu beschreiben: NM_005228.5: c.865_866delinsAT p.A289I (PMID 36044040) - wahrscheinlich pathogen / aktivierend (oncoKB)	2026-09-28	
 7	55221830	G	T	EGFR	NM_005228.5:c.874G>T	missense_variant	wahrscheinlich pathogen (oncoKB), Relevanz unklar (varsome)	2024-05-02	
 7	55221830	G	A	EGFR	NM_005228.5:c.874G>A	missense_variant	Varsome: uncertain significance (01.07.2025, AA)	2025-07-01	
 7	55223543	C	T	EGFR	NM_005228.5:c.910C>T	missense_variant	Relevanz unklar (Varsome) 19.6.2024	2024-07-04	
 7	55223550	C	T	EGFR	NM_005228.5:c.917C>T	missense_variant	Relevanz unklar (Varsome), likely neutral (oncoKB)>benign 18.12.2023	2023-12-19	
+7	55223565	G	A	EGFR	NM_005228.5:c.932G>A	missense_variant	Relevanz unklar (Franklin, Varsome, oncoKB) 23.9.2026	2026-09-28	
 7	55223566	T	G	EGFR	NM_005228.5:c.933T>G	missense_variant	Relevanz unklar (oncoKB, Franklin, Varsome) 17.2.2026	2026-02-19	
 7	55223567	G	T	EGFR	NM_005228.5:c.934G>T	missense_variant	Relevanz unklar (Varsome) 25.1.2024	2024-01-25	
 7	55223634	G	T	EGFR	NM_005228.5:c.1001G>T	missense_variant	Relevanz unklar (Varsome) (22.6.2023)	2023-07-03	
